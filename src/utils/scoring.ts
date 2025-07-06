@@ -1,7 +1,7 @@
-import { Question, ExamAttempt } from '../types';
+import { Question } from '../types';
 
 export class ScoringSystem {
-  static calculateReadingScore(questions: Question[], answers: Record<string, any>): number {
+  static calculateReadingScore(questions: Question[], answers: Record<string, string | string[]>): number {
     let correct = 0;
     let total = 0;
 
@@ -43,7 +43,7 @@ export class ScoringSystem {
     return Math.round((correct / total) * 100);
   }
 
-  static calculateListeningScore(questions: Question[], answers: Record<string, any>): number {
+  static calculateListeningScore(questions: Question[], answers: Record<string, string | string[]>): number {
     return this.calculateReadingScore(questions, answers);
   }
 

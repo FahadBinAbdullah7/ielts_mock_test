@@ -14,11 +14,12 @@ export class ExamStorage {
   static async getAllExams(): Promise<Exam[]> {
     try {
       const exams = await DatabaseService.getAllExams();
-      return exams.map((exam: any) => ({
+      return exams.map((exam) => ({
         ...exam,
         sections: typeof exam.sections === 'string' ? JSON.parse(exam.sections) : exam.sections,
         createdAt: new Date(exam.created_at),
-        isActive: exam.is_active
+        isActive: exam.is_active,
+        createdBy: 'admin' // Default value since this field is not stored in database
       }));
     } catch (error) {
       console.error('Error getting exams:', error);
@@ -35,7 +36,8 @@ export class ExamStorage {
         ...exam,
         sections: typeof exam.sections === 'string' ? JSON.parse(exam.sections) : exam.sections,
         createdAt: new Date(exam.created_at),
-        isActive: exam.is_active
+        isActive: exam.is_active,
+        createdBy: 'admin' // Default value since this field is not stored in database
       };
     } catch (error) {
       console.error('Error getting exam by id:', error);
@@ -68,12 +70,13 @@ export class ExamStorage {
   static async getActiveExams(): Promise<Exam[]> {
     try {
       const exams = await DatabaseService.getActiveExams();
-      return exams.map((exam: any) => ({
-        ...exam,
-        sections: typeof exam.sections === 'string' ? JSON.parse(exam.sections) : exam.sections,
-        createdAt: new Date(exam.created_at),
-        isActive: exam.is_active
-      }));
+              return exams.map((exam) => ({
+          ...exam,
+          sections: typeof exam.sections === 'string' ? JSON.parse(exam.sections) : exam.sections,
+          createdAt: new Date(exam.created_at),
+          isActive: exam.is_active,
+          createdBy: 'admin' // Default value since this field is not stored in database
+        }));
     } catch (error) {
       console.error('Error getting active exams:', error);
       return [];

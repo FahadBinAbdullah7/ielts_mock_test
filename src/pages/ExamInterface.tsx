@@ -6,7 +6,7 @@ import QuestionCard from '../components/QuestionCard';
 import { ExamStorage } from '../utils/examStorage';
 import { DatabaseService } from '../lib/database';
 import { ScoringSystem } from '../utils/scoring';
-import { Exam, ExamAttempt } from '../types';
+import { Exam } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
 const ExamInterface: React.FC = () => {
@@ -16,12 +16,12 @@ const ExamInterface: React.FC = () => {
   
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [isExamStarted, setIsExamStarted] = useState(false);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [exam, setExam] = useState<Exam | null>(null);
-  const [startTime, setStartTime] = useState<Date | null>(null);
+
   const [attemptId, setAttemptId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,7 +61,7 @@ const ExamInterface: React.FC = () => {
   const isLastQuestion = currentQuestionIndex === currentSection.questions.length - 1;
   const isLastSection = currentSectionIndex === exam.sections.length - 1;
 
-  const handleAnswerChange = (questionId: string, answer: any) => {
+  const handleAnswerChange = (questionId: string, answer: string | string[]) => {
     setAnswers(prev => ({
       ...prev,
       [questionId]: answer
@@ -182,7 +182,6 @@ const ExamInterface: React.FC = () => {
       setAttemptId(result.insertId);
       setIsExamStarted(true);
       setIsTimerRunning(true);
-      setStartTime(new Date());
     } catch (error) {
       console.error('Error starting exam:', error);
       alert('Error starting exam. Please try again.');
@@ -212,7 +211,7 @@ const ExamInterface: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Sections Overview</h3>
               <div className="space-y-2">
-                {exam.sections.map((section, index) => (
+                {exam.sections.map((section) => (
                   <div key={section.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
                     <span className="font-medium capitalize">{section.name}</span>
                     <span className="text-sm text-gray-600">

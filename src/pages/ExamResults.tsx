@@ -5,9 +5,9 @@ import { ScoringSystem } from '../utils/scoring';
 
 const ExamResults: React.FC = () => {
   const location = useLocation();
-  const { examId, answers, scores, overallBand, attemptId } = location.state || {};
-  const [writingGrades, setWritingGrades] = useState<any>({});
-  const [writingFeedback, setWritingFeedback] = useState<any>({});
+  const { scores, overallBand, attemptId } = location.state || {};
+  const [writingGrades, setWritingGrades] = useState<Record<string, number>>({});
+  const [writingFeedback, setWritingFeedback] = useState<Record<string, string>>({});
   const [finalOverallBand, setFinalOverallBand] = useState(overallBand);
 
   useEffect(() => {
@@ -21,9 +21,9 @@ const ExamResults: React.FC = () => {
 
       // Calculate final overall band including writing scores
       if (Object.keys(savedScores).length > 0) {
-        const writingBand = Object.values(savedScores).reduce((a: any, b: any) => a + b, 0) / Object.values(savedScores).length;
-        const allScores = { ...scores, writing: writingBand };
-        const newOverallBand = Object.values(allScores).reduce((a: any, b: any) => a + b, 0) / Object.values(allScores).length;
+        const writingBand = Object.values(savedScores as Record<string, number>).reduce((a: number, b: number) => a + b, 0) / Object.values(savedScores).length;
+        const allScores = { ...(scores as Record<string, number>), writing: writingBand };
+        const newOverallBand = Object.values(allScores).reduce((a: number, b: number) => a + b, 0) / Object.values(allScores).length;
         setFinalOverallBand(Math.round(newOverallBand * 10) / 10);
       }
     }
@@ -47,7 +47,7 @@ const ExamResults: React.FC = () => {
 
   const allScores = { ...scores };
   if (Object.keys(writingGrades).length > 0) {
-    const writingBand = Object.values(writingGrades).reduce((a: any, b: any) => a + b, 0) / Object.values(writingGrades).length;
+    const writingBand = Object.values(writingGrades).reduce((a: number, b: number) => a + b, 0) / Object.values(writingGrades).length;
     allScores.writing = writingBand;
   }
 

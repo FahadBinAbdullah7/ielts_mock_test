@@ -39,10 +39,7 @@ interface MediaFile {
   created_at: string;
 }
 
-// Check if user is admin (simple check for demo purposes)
-const isAdmin = () => {
-  return localStorage.getItem('adminSession') === 'true';
-};
+// Database service functions using Supabase
 
 // Database service functions using Supabase
 export class DatabaseService {
@@ -102,7 +99,7 @@ export class DatabaseService {
   }
 
   // Exam operations
-  static async createExam(title: string, sections: any) {
+  static async createExam(title: string, sections: unknown) {
     try {
       const { data, error } = await supabase
         .from('exams')
@@ -171,7 +168,7 @@ export class DatabaseService {
     }
   }
 
-  static async updateExam(id: string, updates: any) {
+  static async updateExam(id: string, updates: Record<string, unknown>) {
     try {
       const { data, error } = await supabase
         .from('exams')
@@ -229,7 +226,7 @@ export class DatabaseService {
     }
   }
 
-  static async updateExamAttempt(id: string, updates: any) {
+  static async updateExamAttempt(id: string, updates: Record<string, unknown>) {
     try {
       const { data, error } = await supabase
         .from('exam_attempts')

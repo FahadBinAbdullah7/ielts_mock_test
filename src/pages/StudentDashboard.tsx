@@ -30,30 +30,14 @@ const StudentDashboard: React.FC = () => {
       // Load recent exam attempts for this student
       const attempts = await DatabaseService.getExamAttemptsByStudent(student!.id);
       setRecentAttempts(attempts.slice(0, 5)); // Show last 5 attempts
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
+    } catch {
+      console.error('Error loading dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  const getExamTitle = async (examId: string) => {
-    try {
-      const exam = await ExamStorage.getExamById(examId);
-      return exam?.title || 'Unknown Exam';
-    } catch (error) {
-      return 'Unknown Exam';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-blue-100 text-blue-800';
-      case 'graded': return 'bg-green-100 text-green-800';
-      case 'in-progress': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  
 
   if (loading) {
     return (
@@ -218,7 +202,7 @@ const ExamAttemptCard: React.FC<{ attempt: ExamAttempt }> = ({ attempt }) => {
       try {
         const exam = await ExamStorage.getExamById(attempt.exam_id);
         setExamTitle(exam?.title || 'Unknown Exam');
-      } catch (error) {
+      } catch {
         setExamTitle('Unknown Exam');
       }
     };

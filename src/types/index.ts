@@ -41,7 +41,7 @@ export interface ExamAttempt {
   id: string;
   exam_id: string;
   student_id: string;
-  answers: Record<string, any>;
+  answers: Record<string, string | string[]>;
   scores: Record<string, number>;
   overall_band: number;
   started_at: string;

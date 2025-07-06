@@ -43,7 +43,7 @@ const AdminLogin: React.FC = () => {
         localStorage.setItem('adminSession', 'true');
         navigate('/admin/dashboard');
       }
-    } catch (error) {
+    } catch {
       setError('An unexpected error occurred');
     }
 

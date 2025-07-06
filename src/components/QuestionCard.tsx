@@ -4,8 +4,8 @@ import { DatabaseService } from '../lib/database';
 
 interface QuestionCardProps {
   question: Question;
-  answer: any;
-  onAnswerChange: (questionId: string, answer: any) => void;
+  answer: string | string[];
+  onAnswerChange: (questionId: string, answer: string | string[]) => void;
   questionNumber: number;
 }
 
@@ -52,7 +52,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     loadMediaFiles();
   }, [question.imageUrl, question.audioUrl]);
 
-  const handleAnswerChange = (newAnswer: any) => {
+  const handleAnswerChange = (newAnswer: string | string[]) => {
     onAnswerChange(question.id, newAnswer);
   };
 
@@ -181,7 +181,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             />
             <div className="flex justify-between text-sm text-gray-500">
               <span>
-                Word count: {answer ? answer.split(' ').filter((word: string) => word.length > 0).length : 0}
+                Word count: {answer && typeof answer === 'string' ? answer.split(' ').filter((word: string) => word.length > 0).length : 0}
               </span>
               <span>
                 Minimum: {question.type === 'essay' && questionNumber === 1 ? '150' : '250'} words

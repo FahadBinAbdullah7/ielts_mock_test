@@ -380,7 +380,7 @@ const ExamAttemptRow: React.FC<{
       try {
         const exam = await ExamStorage.getExamById(attempt.exam_id);
         setExamTitle(exam?.title || 'Unknown Exam');
-      } catch (error) {
+      } catch {
         setExamTitle('Unknown Exam');
       }
     };

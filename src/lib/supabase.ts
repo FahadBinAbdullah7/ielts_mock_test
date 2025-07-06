@@ -46,7 +46,7 @@ export type Database = {
         Row: {
           id: string;
           title: string;
-          sections: any;
+          sections: JSON;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -54,7 +54,7 @@ export type Database = {
         Insert: {
           id?: string;
           title: string;
-          sections: any;
+          sections: JSON;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -62,7 +62,7 @@ export type Database = {
         Update: {
           id?: string;
           title?: string;
-          sections?: any;
+          sections?: JSON;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -73,37 +73,37 @@ export type Database = {
           id: string;
           exam_id: string;
           student_id: string;
-          answers: any;
-          scores: any;
+          answers: JSON;
+          scores: JSON;
           overall_band: number;
           status: string;
           started_at: string;
           completed_at: string | null;
-          writing_feedback: any;
+          writing_feedback: JSON;
         };
         Insert: {
           id?: string;
           exam_id: string;
           student_id: string;
-          answers?: any;
-          scores?: any;
+          answers?: JSON;
+          scores?: JSON;
           overall_band?: number;
           status?: string;
           started_at?: string;
           completed_at?: string | null;
-          writing_feedback?: any;
+          writing_feedback?: JSON;
         };
         Update: {
           id?: string;
           exam_id?: string;
           student_id?: string;
-          answers?: any;
-          scores?: any;
+          answers?: JSON;
+          scores?: JSON;
           overall_band?: number;
           status?: string;
           started_at?: string;
           completed_at?: string | null;
-          writing_feedback?: any;
+          writing_feedback?: JSON;
         };
       };
       media_files: {
@@ -111,21 +111,21 @@ export type Database = {
           id: string;
           file_name: string;
           file_type: string;
-          file_data: any;
+          file_data: string;
           created_at: string;
         };
         Insert: {
           id?: string;
           file_name: string;
           file_type: string;
-          file_data: any;
+          file_data: string;
           created_at?: string;
         };
         Update: {
           id?: string;
           file_name?: string;
           file_type?: string;
-          file_data?: any;
+          file_data?: string;
           created_at?: string;
         };
       };

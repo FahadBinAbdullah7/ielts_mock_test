@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Save, ArrowLeft, Upload, Image, Play, Pause } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
 import { Question, ExamSection, Exam } from '../types';
 import { DatabaseService } from '../lib/database';
 
@@ -38,7 +38,7 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
     setCurrentQuestions([...currentQuestions, newQuestion]);
   };
 
-  const updateQuestion = (index: number, field: keyof Question, value: any) => {
+  const updateQuestion = (index: number, field: keyof Question, value: string | number | string[] | boolean) => {
     const updated = [...currentQuestions];
     updated[index] = { ...updated[index], [field]: value };
     setCurrentQuestions(updated);
@@ -448,7 +448,7 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
               {['reading', 'listening', 'writing'].map((section) => (
                 <button
                   key={section}
-                  onClick={() => setCurrentSection(section as any)}
+                  onClick={() => setCurrentSection(section as 'reading' | 'listening' | 'writing')}
                   className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                     currentSection === section
                       ? 'bg-white text-blue-600 shadow-sm'
