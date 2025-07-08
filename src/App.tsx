@@ -8,7 +8,6 @@ import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ExamInterface from './pages/ExamInterface';
 import ExamResults from './pages/ExamResults';
-import StudentResults from './pages/StudentResults';
 import CreateExam from './pages/CreateExam';
 import ExamManagement from './pages/ExamManagement';
 import StudentGrading from './pages/StudentGrading';
@@ -38,11 +37,6 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/student/results" element={
-            <ProtectedRoute>
-              <StudentResults />
-            </ProtectedRoute>
-          } />
-          <Route path="/student/exam-results" element={
             <ProtectedRoute>
               <ExamResults />
             </ProtectedRoute>

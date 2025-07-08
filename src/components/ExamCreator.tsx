@@ -270,7 +270,7 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
       name: currentSection.charAt(0).toUpperCase() + currentSection.slice(1),
       type: currentSection,
       questions: allQuestions,
-      timeLimit: 60, // All sections are 60 minutes
+      timeLimit: currentSection === 'reading' ? 60 : currentSection === 'listening' ? 30 : 60,
       instructions: getSectionInstructions(currentSection)
     };
 
@@ -286,9 +286,9 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
       case 'reading':
         return 'Read the passages carefully and answer all questions. You have 60 minutes to complete this section.';
       case 'listening':
-        return 'Listen to the audio recording and answer the questions. You have 60 minutes to complete this section. You can replay the audio as many times as needed.';
+        return 'Listen to the audio recording and answer the questions. You can replay the audio as many times as needed.';
       case 'writing':
-        return 'Complete both writing tasks. You have 60 minutes total. Task 1: 20 minutes (150+ words), Task 2: 40 minutes (250+ words).';
+        return 'Complete both writing tasks. Task 1: 20 minutes (150+ words), Task 2: 40 minutes (250+ words).';
       default:
         return '';
     }

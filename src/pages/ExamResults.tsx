@@ -1,65 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { Award, BookOpen, Headphones, PenTool, ArrowLeft, MessageSquare, Eye, CheckCircle, X } from 'lucide-react';
+import { useLocation, Link } from 'react-router-dom';
+import { Award, BookOpen, Headphones, PenTool, ArrowLeft, MessageSquare } from 'lucide-react';
 import { ScoringSystem } from '../utils/scoring';
-import { ExamStorage } from '../utils/examStorage';
-import { DatabaseService } from '../lib/database';
-import { Exam, Question } from '../types';
 
 const ExamResults: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { examId, answers, scores, overallBand, attemptId } = location.state || {};
   const [writingGrades, setWritingGrades] = useState<any>({});
   const [writingFeedback, setWritingFeedback] = useState<any>({});
   const [finalOverallBand, setFinalOverallBand] = useState(overallBand);
-  const [exam, setExam] = useState<Exam | null>(null);
-  const [showReview, setShowReview] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadExamAndResults();
-  }, [examId, attemptId]);
-
-  const loadExamAndResults = async () => {
-    try {
-      setLoading(true);
+    if (attemptId) {
+      // Load writing grades and feedback from teacher
+      const savedScores = JSON.parse(localStorage.getItem(`writing_scores_${attemptId}`) || '{}');
+      const savedFeedback = JSON.parse(localStorage.getItem(`writing_feedback_${attemptId}`) || '{}');
       
-      // Load exam data
-      if (examId) {
-        const examData = await ExamStorage.getExamById(examId);
-        setExam(examData);
-      }
+      setWritingGrades(savedScores);
+      setWritingFeedback(savedFeedback);
 
-      // Load writing grades and feedback if attempt exists
-      if (attemptId) {
-        const attempt = await DatabaseService.getExamAttemptById(attemptId);
-        if (attempt) {
-          const savedFeedback = typeof attempt.writing_feedback === 'string' 
-            ? JSON.parse(attempt.writing_feedback) 
-            : attempt.writing_feedback || {};
-          
-          const savedScores = typeof attempt.scores === 'string'
-            ? JSON.parse(attempt.scores)
-            : attempt.scores || {};
-          
-          setWritingGrades(savedScores.writing ? { writing: savedScores.writing } : {});
-          setWritingFeedback(savedFeedback);
-
-          // Calculate final overall band including writing scores
-          if (savedScores.writing) {
-            const allScores = { ...scores, writing: savedScores.writing };
-            const newOverallBand = ScoringSystem.calculateOverallBandScore(allScores);
-            setFinalOverallBand(newOverallBand);
-          }
-        }
+      // Calculate final overall band including writing scores
+      if (Object.keys(savedScores).length > 0) {
+        const writingBand = Object.values(savedScores).reduce((a: any, b: any) => a + b, 0) / Object.values(savedScores).length;
+        const allScores = { ...scores, writing: writingBand };
+        const newOverallBand = Object.values(allScores).reduce((a: any, b: any) => a + b, 0) / Object.values(allScores).length;
+        setFinalOverallBand(Math.round(newOverallBand * 10) / 10);
       }
-    } catch (error) {
-      console.error('Error loading exam and results:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [attemptId, scores]);
 
   const getSectionIcon = (section: string) => {
     switch (section) {
@@ -71,7 +39,10 @@ const ExamResults: React.FC = () => {
   };
 
   const getBandColor = (band: number) => {
-    return ScoringSystem.getBandColor(band);
+    if (band >= 8) return 'text-green-600 bg-green-50';
+    if (band >= 6.5) return 'text-blue-600 bg-blue-50';
+    if (band >= 5) return 'text-yellow-600 bg-yellow-50';
+    return 'text-red-600 bg-red-50';
   };
 
   const allScores = { ...scores };
@@ -80,48 +51,18 @@ const ExamResults: React.FC = () => {
     allScores.writing = writingBand;
   }
 
-  const handleBackToDashboard = () => {
-    navigate('/student/dashboard');
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading results...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (showReview && exam) {
-    return <ExamReview exam={exam} answers={answers} onBack={() => setShowReview(false)} />;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <button
-                onClick={handleBackToDashboard}
-                className="text-blue-600 hover:text-blue-700 mr-4 flex items-center"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Dashboard
-              </button>
-              <h1 className="text-xl font-semibold text-gray-900">Exam Results</h1>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
+          <Link
+            to="/student"
+            className="flex items-center text-blue-600 hover:text-blue-700 mb-4"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            Back to Dashboard
+          </Link>
           <h1 className="text-3xl font-bold text-gray-900">Exam Results</h1>
           <p className="text-gray-600 mt-2">Your IELTS mock test performance</p>
         </div>
@@ -132,17 +73,12 @@ const ExamResults: React.FC = () => {
             <Award className="h-16 w-16 text-blue-600 mx-auto" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Overall Band Score</h2>
-          <div className={`text-6xl font-bold mb-4 px-6 py-3 rounded-full inline-block ${getBandColor(finalOverallBand)}`}>
+          <div className={`text-6xl font-bold mb-4 ${getBandColor(finalOverallBand)}`}>
             {finalOverallBand}
           </div>
           <p className="text-gray-600 max-w-2xl mx-auto">
             {ScoringSystem.getBandFeedback(Math.floor(finalOverallBand))}
           </p>
-          <div className="mt-4">
-            <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getBandColor(finalOverallBand)}`}>
-              {ScoringSystem.getPerformanceLevel(finalOverallBand)}
-            </span>
-          </div>
         </div>
 
         {/* Section Scores */}
@@ -155,17 +91,12 @@ const ExamResults: React.FC = () => {
                   <Icon className="h-8 w-8 text-blue-600 mr-3" />
                   <h3 className="text-xl font-semibold text-gray-900 capitalize">{section}</h3>
                 </div>
-                <div className={`text-4xl font-bold mb-2 px-3 py-1 rounded-full inline-block ${getBandColor(score as number)}`}>
+                <div className={`text-4xl font-bold mb-2 ${getBandColor(score as number)}`}>
                   {typeof score === 'number' ? score.toFixed(1) : score}
                 </div>
                 <p className="text-gray-600 text-sm">
                   {ScoringSystem.getBandFeedback(Math.floor(score as number))}
                 </p>
-                <div className="mt-2">
-                  <span className={`text-xs px-2 py-1 rounded-full ${getBandColor(score as number)}`}>
-                    {ScoringSystem.getPerformanceLevel(score as number)}
-                  </span>
-                </div>
                 {section === 'writing' && Object.keys(writingGrades).length > 0 && (
                   <div className="mt-2">
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
@@ -253,7 +184,7 @@ const ExamResults: React.FC = () => {
         </div>
 
         {/* Recommendations */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Recommended Next Steps</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -285,17 +216,8 @@ const ExamResults: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex justify-center space-x-4 mt-8">
-          {exam && (
-            <button
-              onClick={() => setShowReview(true)}
-              className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors flex items-center"
-            >
-              <Eye className="h-5 w-5 mr-2" />
-              Review Exam & Answers
-            </button>
-          )}
           <Link
-            to="/student/dashboard"
+            to="/student/exams"
             className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
           >
             Take Another Test
@@ -305,297 +227,6 @@ const ExamResults: React.FC = () => {
             className="bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 transition-colors"
           >
             Print Results
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Exam Review Component
-const ExamReview: React.FC<{
-  exam: Exam;
-  answers: Record<string, any>;
-  onBack: () => void;
-}> = ({ exam, answers, onBack }) => {
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-
-  const currentSection = exam.sections[currentSectionIndex];
-  const currentQuestion = currentSection.questions[currentQuestionIndex];
-  const userAnswer = answers[currentQuestion.id];
-
-  const isCorrect = (question: Question, answer: any) => {
-    if (!answer) return false;
-    
-    switch (question.type) {
-      case 'mcq':
-        return answer === question.correctAnswer;
-      case 'true-false':
-        return answer === question.correctAnswer;
-      case 'fill-blank':
-        const correctAnswers = Array.isArray(question.correctAnswer) 
-          ? question.correctAnswer 
-          : [question.correctAnswer];
-        
-        if (Array.isArray(answer)) {
-          return answer.every((ans, index) => 
-            correctAnswers[index]?.toLowerCase().trim() === ans?.toLowerCase().trim()
-          );
-        } else {
-          return correctAnswers.some(ans => 
-            ans?.toLowerCase().trim() === answer?.toLowerCase().trim()
-          );
-        }
-      case 'essay':
-        return true; // Essays are always marked as "answered" if there's content
-      default:
-        return false;
-    }
-  };
-
-  const getAnswerStatus = (question: Question, answer: any) => {
-    if (question.type === 'essay') {
-      return answer ? 'answered' : 'not-answered';
-    }
-    
-    if (!answer) return 'not-answered';
-    return isCorrect(question, answer) ? 'correct' : 'incorrect';
-  };
-
-  const renderAnswer = (question: Question, answer: any) => {
-    switch (question.type) {
-      case 'mcq':
-        return (
-          <div className="space-y-2">
-            {question.options?.map((option, index) => (
-              <div 
-                key={index} 
-                className={`p-3 rounded border ${
-                  option === question.correctAnswer 
-                    ? 'bg-green-100 border-green-300' 
-                    : option === answer 
-                    ? 'bg-red-100 border-red-300' 
-                    : 'bg-gray-50 border-gray-200'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span>{option}</span>
-                  {option === question.correctAnswer && (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  )}
-                  {option === answer && option !== question.correctAnswer && (
-                    <X className="h-5 w-5 text-red-600" />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      
-      case 'fill-blank':
-        return (
-          <div className="space-y-2">
-            <div className="p-3 bg-gray-50 rounded border">
-              <strong>Your Answer:</strong> {Array.isArray(answer) ? answer.join(', ') : answer || 'No answer'}
-            </div>
-            <div className="p-3 bg-green-50 rounded border border-green-200">
-              <strong>Correct Answer:</strong> {
-                Array.isArray(question.correctAnswer) 
-                  ? question.correctAnswer.join(', ') 
-                  : question.correctAnswer
-              }
-            </div>
-          </div>
-        );
-      
-      case 'true-false':
-        return (
-          <div className="space-y-2">
-            <div className={`p-3 rounded border ${
-              'true' === question.correctAnswer ? 'bg-green-100 border-green-300' : 'bg-gray-50 border-gray-200'
-            }`}>
-              <div className="flex items-center justify-between">
-                <span>True</span>
-                {answer === 'true' && answer !== question.correctAnswer && (
-                  <X className="h-5 w-5 text-red-600" />
-                )}
-                {'true' === question.correctAnswer && (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                )}
-              </div>
-            </div>
-            <div className={`p-3 rounded border ${
-              'false' === question.correctAnswer ? 'bg-green-100 border-green-300' : 'bg-gray-50 border-gray-200'
-            }`}>
-              <div className="flex items-center justify-between">
-                <span>False</span>
-                {answer === 'false' && answer !== question.correctAnswer && (
-                  <X className="h-5 w-5 text-red-600" />
-                )}
-                {'false' === question.correctAnswer && (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      
-      case 'essay':
-        return (
-          <div className="space-y-2">
-            <div className="p-4 bg-gray-50 rounded border max-h-64 overflow-y-auto">
-              <strong>Your Answer:</strong>
-              <div className="mt-2 whitespace-pre-wrap text-sm">
-                {answer || 'No answer provided'}
-              </div>
-            </div>
-            <div className="text-sm text-gray-600">
-              Word count: {answer ? answer.split(' ').filter((word: string) => word.length > 0).length : 0}
-            </div>
-          </div>
-        );
-      
-      default:
-        return <div>No answer provided</div>;
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <button
-                onClick={onBack}
-                className="text-blue-600 hover:text-blue-700 mr-4 flex items-center"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Results
-              </button>
-              <h1 className="text-xl font-semibold text-gray-900">Exam Review</h1>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Section Navigation */}
-        <div className="mb-6">
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-            {exam.sections.map((section, index) => (
-              <button
-                key={section.id}
-                onClick={() => {
-                  setCurrentSectionIndex(index);
-                  setCurrentQuestionIndex(0);
-                }}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  currentSectionIndex === index
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {section.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Question Navigation */}
-        <div className="mb-6">
-          <div className="flex flex-wrap gap-2">
-            {currentSection.questions.map((question, index) => {
-              const status = getAnswerStatus(question, answers[question.id]);
-              return (
-                <button
-                  key={question.id}
-                  onClick={() => setCurrentQuestionIndex(index)}
-                  className={`w-10 h-10 rounded text-sm font-medium ${
-                    index === currentQuestionIndex
-                      ? 'bg-blue-600 text-white'
-                      : status === 'correct'
-                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                      : status === 'incorrect'
-                      ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                      : status === 'answered'
-                      ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Question Content */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {currentSection.type === 'writing' ? `Task ${currentQuestionIndex + 1}` : `Question ${currentQuestionIndex + 1}`}
-            </h2>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">
-                {currentQuestion.points} {currentQuestion.points === 1 ? 'point' : 'points'}
-              </span>
-              {getAnswerStatus(currentQuestion, userAnswer) === 'correct' && (
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              )}
-              {getAnswerStatus(currentQuestion, userAnswer) === 'incorrect' && (
-                <X className="h-5 w-5 text-red-600" />
-              )}
-            </div>
-          </div>
-
-          {/* Question Text */}
-          <div className="mb-6">
-            <p className="text-gray-800 font-medium">{currentQuestion.question}</p>
-          </div>
-
-          {/* Answer Section */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Answer Review</h3>
-            {renderAnswer(currentQuestion, userAnswer)}
-          </div>
-        </div>
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between">
-          <button
-            onClick={() => {
-              if (currentQuestionIndex > 0) {
-                setCurrentQuestionIndex(currentQuestionIndex - 1);
-              } else if (currentSectionIndex > 0) {
-                setCurrentSectionIndex(currentSectionIndex - 1);
-                setCurrentQuestionIndex(exam.sections[currentSectionIndex - 1].questions.length - 1);
-              }
-            }}
-            disabled={currentSectionIndex === 0 && currentQuestionIndex === 0}
-            className="px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-
-          <button
-            onClick={() => {
-              if (currentQuestionIndex < currentSection.questions.length - 1) {
-                setCurrentQuestionIndex(currentQuestionIndex + 1);
-              } else if (currentSectionIndex < exam.sections.length - 1) {
-                setCurrentSectionIndex(currentSectionIndex + 1);
-                setCurrentQuestionIndex(0);
-              }
-            }}
-            disabled={
-              currentSectionIndex === exam.sections.length - 1 && 
-              currentQuestionIndex === currentSection.questions.length - 1
-            }
-            className="px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
           </button>
         </div>
       </div>
