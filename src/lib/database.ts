@@ -39,11 +39,6 @@ interface MediaFile {
   created_at: string;
 }
 
-// Check if user is admin (simple check for demo purposes)
-const isAdmin = () => {
-  return localStorage.getItem('adminSession') === 'true';
-};
-
 // Database service functions using Supabase
 export class DatabaseService {
   // Student operations
@@ -101,9 +96,27 @@ export class DatabaseService {
     }
   }
 
+  static async getAllStudents(): Promise<Student[]> {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error getting all students:', error);
+      return [];
+    }
+  }
+
   // Exam operations
   static async createExam(title: string, sections: any) {
     try {
+      console.log('Creating exam with title:', title);
+      console.log('Sections:', sections);
+      
       const { data, error } = await supabase
         .from('exams')
         .insert([
@@ -116,10 +129,42 @@ export class DatabaseService {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error creating exam:', error);
+        throw error;
+      }
+      
+      console.log('Exam created successfully:', data);
       return { insertId: data.id };
     } catch (error) {
       console.error('Error creating exam:', error);
+      throw error;
+    }
+  }
+
+  static async updateExam(id: string, title: string, sections: any, isActive: boolean) {
+    try {
+      console.log('Updating exam:', id, title);
+      
+      const { data, error } = await supabase
+        .from('exams')
+        .update({
+          title,
+          sections: JSON.stringify(sections),
+          is_active: isActive
+        })
+        .eq('id', id)
+        .select();
+
+      if (error) {
+        console.error('Supabase error updating exam:', error);
+        throw error;
+      }
+      
+      console.log('Exam updated successfully:', data);
+      return { affectedRows: data?.length || 0 };
+    } catch (error) {
+      console.error('Error updating exam:', error);
       throw error;
     }
   }
@@ -168,22 +213,6 @@ export class DatabaseService {
     } catch (error) {
       console.error('Error getting exam by id:', error);
       return null;
-    }
-  }
-
-  static async updateExam(id: string, updates: any) {
-    try {
-      const { data, error } = await supabase
-        .from('exams')
-        .update(updates)
-        .eq('id', id)
-        .select();
-
-      if (error) throw error;
-      return { affectedRows: data?.length || 0 };
-    } catch (error) {
-      console.error('Error updating exam:', error);
-      throw error;
     }
   }
 
@@ -276,11 +305,34 @@ export class DatabaseService {
     }
   }
 
+  static async getExamAttemptById(id: string): Promise<ExamAttempt | null> {
+    try {
+      const { data, error } = await supabase
+        .from('exam_attempts')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data || null;
+    } catch (error) {
+      console.error('Error getting exam attempt by id:', error);
+      return null;
+    }
+  }
+
   // Media file operations
   static async saveMediaFile(fileName: string, fileType: string, fileData: string) {
     try {
-      // Convert data URL to base64 string for storage
-      const base64Data = fileData.includes(',') ? fileData.split(',')[1] : fileData;
+      console.log('Saving media file:', fileName, fileType, 'Data length:', fileData.length);
+      
+      // Extract base64 data from data URL
+      let base64Data = fileData;
+      if (fileData.includes(',')) {
+        base64Data = fileData.split(',')[1];
+      }
+      
+      console.log('Base64 data length:', base64Data.length);
       
       const { data, error } = await supabase
         .from('media_files')
@@ -295,9 +347,11 @@ export class DatabaseService {
         .single();
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Supabase error saving media file:', error);
         throw error;
       }
+      
+      console.log('Media file saved successfully:', data.id);
       return { insertId: data.id };
     } catch (error) {
       console.error('Error saving media file:', error);
@@ -307,23 +361,30 @@ export class DatabaseService {
 
   static async getMediaFile(id: string): Promise<MediaFile | null> {
     try {
+      console.log('Getting media file:', id);
+      
       const { data, error } = await supabase
         .from('media_files')
         .select('*')
         .eq('id', id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error getting media file:', error);
+        throw error;
+      }
       
       if (data) {
         // Convert base64 back to data URL for display
         const dataUrl = `data:${data.file_type};base64,${data.file_data}`;
+        console.log('Media file retrieved successfully, data URL length:', dataUrl.length);
         return {
           ...data,
           file_data: dataUrl
         };
       }
       
+      console.log('Media file not found:', id);
       return null;
     } catch (error) {
       console.error('Error getting media file:', error);

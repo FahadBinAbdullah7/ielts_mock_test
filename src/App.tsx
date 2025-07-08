@@ -58,6 +58,11 @@ function App() {
               <CreateExam />
             </AdminProtectedRoute>
           } />
+          <Route path="/admin/exams/edit/:examId" element={
+            <AdminProtectedRoute>
+              <CreateExam />
+            </AdminProtectedRoute>
+          } />
           <Route path="/admin/grading" element={
             <AdminProtectedRoute>
               <StudentGrading />

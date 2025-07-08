@@ -53,6 +53,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      
       if (session?.user) {
         setStudent({
           id: session.user.id,
@@ -61,6 +63,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       } else {
         setStudent(null);
+        // Clear admin session when user logs out
+        localStorage.removeItem('adminSession');
       }
       setLoading(false);
     });
@@ -112,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     await supabase.auth.signOut();
     setStudent(null);
+    localStorage.removeItem('adminSession');
   };
 
   const value = {

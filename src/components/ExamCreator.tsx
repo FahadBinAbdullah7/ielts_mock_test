@@ -6,12 +6,13 @@ import { DatabaseService } from '../lib/database';
 interface ExamCreatorProps {
   onSave: (exam: Exam) => void;
   onCancel: () => void;
+  existingExam?: Exam | null;
 }
 
-const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
-  const [examTitle, setExamTitle] = useState('');
+const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExam }) => {
+  const [examTitle, setExamTitle] = useState(existingExam?.title || '');
   const [currentSection, setCurrentSection] = useState<'reading' | 'listening' | 'writing'>('reading');
-  const [sections, setSections] = useState<ExamSection[]>([]);
+  const [sections, setSections] = useState<ExamSection[]>(existingExam?.sections || []);
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
 
   // Reading specific state - exactly 3 passages
@@ -24,11 +25,11 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
   const createNewQuestion = (): Question => ({
     id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     section: currentSection,
-    type: 'mcq',
+    type: currentSection === 'writing' ? 'essay' : 'mcq',
     question: '',
-    options: ['', '', '', ''],
+    options: currentSection === 'writing' ? undefined : ['', '', '', ''],
     correctAnswer: '',
-    points: 1,
+    points: currentSection === 'writing' ? 25 : 1,
     passage: currentSection === 'reading' ? currentPassage : undefined,
     audioUrl: currentSection === 'listening' ? listeningAudio : undefined
   });
@@ -41,6 +42,24 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
   const updateQuestion = (index: number, field: keyof Question, value: any) => {
     const updated = [...currentQuestions];
     updated[index] = { ...updated[index], [field]: value };
+    
+    // Auto-update options based on question type
+    if (field === 'type') {
+      if (value === 'mcq') {
+        updated[index].options = ['', '', '', ''];
+        updated[index].correctAnswer = '';
+      } else if (value === 'fill-blank') {
+        updated[index].options = undefined;
+        updated[index].correctAnswer = '';
+      } else if (value === 'true-false') {
+        updated[index].options = ['True', 'False'];
+        updated[index].correctAnswer = '';
+      } else if (value === 'essay') {
+        updated[index].options = undefined;
+        updated[index].correctAnswer = undefined;
+      }
+    }
+    
     setCurrentQuestions(updated);
   };
 
@@ -77,7 +96,22 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
 
   const handleAudioUpload = async (file: File) => {
     try {
+      console.log('Starting audio upload...', file.name, file.type, file.size);
+      
+      // Validate file type
+      if (!file.type.startsWith('audio/')) {
+        alert('Please select a valid audio file (MP3, WAV, OGG, etc.)');
+        return;
+      }
+
+      // Validate file size (max 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        alert('Audio file is too large. Please select a file smaller than 50MB.');
+        return;
+      }
+
       const dataUrl = await fileToDataUrl(file);
+      console.log('File converted to data URL, length:', dataUrl.length);
       
       // Save to database
       const result = await DatabaseService.saveMediaFile(
@@ -85,6 +119,8 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
         file.type,
         dataUrl
       );
+      
+      console.log('Media file saved, result:', result);
       
       if (result.insertId) {
         // Create a reference URL for the audio
@@ -96,16 +132,35 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
           ...q,
           audioUrl: audioUrl
         })));
+        
+        alert('Audio file uploaded successfully!');
+      } else {
+        throw new Error('No insert ID returned');
       }
     } catch (error) {
       console.error('Error uploading audio:', error);
-      alert('Error uploading audio file. Please try again.');
+      alert(`Error uploading audio file: ${error.message}. Please try again.`);
     }
   };
 
   const handleImageUpload = async (questionIndex: number, file: File) => {
     try {
+      console.log('Starting image upload...', file.name, file.type, file.size);
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select a valid image file (JPG, PNG, GIF, etc.)');
+        return;
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Image file is too large. Please select a file smaller than 10MB.');
+        return;
+      }
+
       const dataUrl = await fileToDataUrl(file);
+      console.log('Image converted to data URL, length:', dataUrl.length);
       
       // Save to database
       const result = await DatabaseService.saveMediaFile(
@@ -114,22 +169,34 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
         dataUrl
       );
       
+      console.log('Media file saved, result:', result);
+      
       if (result.insertId) {
         // Create a reference URL for the image
         const imageUrl = `media://${result.insertId}`;
         updateQuestion(questionIndex, 'imageUrl', imageUrl);
+        alert('Image uploaded successfully!');
+      } else {
+        throw new Error('No insert ID returned');
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Error uploading image file. Please try again.');
+      alert(`Error uploading image file: ${error.message}. Please try again.`);
     }
   };
 
   const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = reject;
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        console.log('FileReader result length:', result?.length);
+        resolve(result);
+      };
+      reader.onerror = (e) => {
+        console.error('FileReader error:', e);
+        reject(new Error('Failed to read file'));
+      };
       reader.readAsDataURL(file);
     });
   };
@@ -227,7 +294,7 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
     }
   };
 
-  const saveExam = () => {
+  const saveExam = async () => {
     if (!examTitle.trim()) {
       alert('Please provide an exam title');
       return;
@@ -239,12 +306,12 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
     }
 
     const exam: Exam = {
-      id: `exam_${Date.now()}`,
+      id: existingExam?.id || `exam_${Date.now()}`,
       title: examTitle,
       sections,
       createdBy: 'admin',
-      createdAt: new Date(),
-      isActive: true
+      createdAt: existingExam?.createdAt || new Date(),
+      isActive: existingExam?.isActive ?? true
     };
 
     onSave(exam);
@@ -253,7 +320,9 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
   const renderQuestionForm = (question: Question, index: number) => (
     <div key={question.id} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
       <div className="flex justify-between items-start mb-4">
-        <h4 className="text-lg font-semibold text-gray-900">Question {index + 1}</h4>
+        <h4 className="text-lg font-semibold text-gray-900">
+          {currentSection === 'writing' ? `Task ${index + 1}` : `Question ${index + 1}`}
+        </h4>
         <button
           onClick={() => removeQuestion(index)}
           className="text-red-600 hover:text-red-700"
@@ -278,19 +347,31 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Question Text</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {currentSection === 'writing' ? 'Task Instructions' : 'Question Text'}
+          </label>
           <textarea
             value={question.question}
             onChange={(e) => updateQuestion(index, 'question', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows={3}
-            placeholder="Enter your question here..."
+            rows={currentSection === 'writing' ? 4 : 3}
+            placeholder={currentSection === 'writing' 
+              ? (index === 0 
+                ? "Task 1: Describe the information shown in the chart/graph/table/diagram..." 
+                : "Task 2: Write an essay discussing your opinion on the given topic...")
+              : "Enter your question here..."
+            }
           />
         </div>
 
         {/* Image Upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Question Image (Optional)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {currentSection === 'writing' 
+              ? `Task Image ${index === 0 ? '(Required for Task 1)' : '(Optional)'}`
+              : 'Question Image (Optional)'
+            }
+          </label>
           <div className="space-y-2">
             <input
               type="file"
@@ -309,7 +390,12 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
               </div>
             )}
             <p className="text-sm text-gray-500">
-              Upload an image if your question requires visual reference (charts, diagrams, etc.).
+              {currentSection === 'writing'
+                ? (index === 0 
+                  ? "Upload a chart, graph, table, or diagram for Task 1."
+                  : "Upload an optional image if needed for Task 2.")
+                : "Upload an image if your question requires visual reference (charts, diagrams, etc.)."
+              }
             </p>
           </div>
         </div>
@@ -389,16 +475,31 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Points</label>
-          <input
-            type="number"
-            value={question.points}
-            onChange={(e) => updateQuestion(index, 'points', parseInt(e.target.value) || 1)}
-            className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            min="1"
-          />
-        </div>
+        {question.type !== 'essay' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Points</label>
+            <input
+              type="number"
+              value={question.points}
+              onChange={(e) => updateQuestion(index, 'points', parseInt(e.target.value) || 1)}
+              className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              min="1"
+            />
+          </div>
+        )}
+
+        {question.type === 'essay' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Points</label>
+            <input
+              type="number"
+              value={question.points}
+              onChange={(e) => updateQuestion(index, 'points', parseInt(e.target.value) || 25)}
+              className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              min="1"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -417,14 +518,16 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
                 <ArrowLeft className="h-5 w-5 mr-2" />
                 Back
               </button>
-              <h1 className="text-2xl font-bold text-gray-900">Create New IELTS Exam</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {existingExam ? 'Edit IELTS Exam' : 'Create New IELTS Exam'}
+              </h1>
             </div>
             <button
               onClick={saveExam}
               className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center"
             >
               <Save className="h-5 w-5 mr-2" />
-              Save Exam
+              {existingExam ? 'Update Exam' : 'Save Exam'}
             </button>
           </div>
         </div>
@@ -597,10 +700,12 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
                   {listeningAudio && (
                     <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                       <p className="text-sm text-green-600">✓ Audio uploaded successfully</p>
+                      <p className="text-xs text-gray-500 mt-1">Audio ID: {listeningAudio}</p>
                     </div>
                   )}
                   <p className="text-sm text-gray-500">
-                    Upload the main audio file for the listening section. Supported formats: MP3, WAV, OGG.
+                    Upload the main audio file for the listening section. Supported formats: MP3, WAV, OGG, M4A.
+                    Maximum file size: 50MB.
                   </p>
                 </div>
               </div>
@@ -670,79 +775,7 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel }) => {
               </div>
 
               <div className="space-y-4">
-                {currentQuestions.map((question, index) => (
-                  <div key={question.id} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="text-lg font-semibold text-gray-900">
-                        Writing Task {index + 1} {index === 0 ? '(150+ words)' : '(250+ words)'}
-                      </h4>
-                      <button
-                        onClick={() => removeQuestion(index)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Task Instructions</label>
-                        <textarea
-                          value={question.question}
-                          onChange={(e) => updateQuestion(index, 'question', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          rows={4}
-                          placeholder={index === 0 
-                            ? "Task 1: Describe the information shown in the chart/graph/table/diagram..." 
-                            : "Task 2: Write an essay discussing your opinion on the given topic..."
-                          }
-                        />
-                      </div>
-
-                      {/* Image Upload for Writing Tasks */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Task Image {index === 0 ? '(Required for Task 1)' : '(Optional)'}
-                        </label>
-                        <div className="space-y-2">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleImageUpload(index, file);
-                              }
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          {question.imageUrl && (
-                            <div className="mt-2">
-                              <p className="text-sm text-green-600">✓ Image uploaded successfully</p>
-                            </div>
-                          )}
-                          <p className="text-sm text-gray-500">
-                            {index === 0 
-                              ? "Upload a chart, graph, table, or diagram for Task 1."
-                              : "Upload an optional image if needed for Task 2."
-                            }
-                          </p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Points</label>
-                        <input
-                          type="number"
-                          value={question.points}
-                          onChange={(e) => updateQuestion(index, 'points', parseInt(e.target.value) || 25)}
-                          className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          min="1"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                {currentQuestions.map((question, index) => renderQuestionForm(question, index))}
               </div>
 
               {currentQuestions.length === 2 && (
