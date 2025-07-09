@@ -51,22 +51,85 @@ const StudentGrading: React.FC = () => {
         ? JSON.parse(attempt.scores)
         : attempt.scores || {};
       
-      // Extract writing scores from the scores object
+      // Check if already AI graded
+      const isAIGraded = Object.values(existingFeedback).some((feedback: any) => 
+        feedback?.assessedBy === 'AI'
+      );
+      
+      // Extract writing scores
       const writingTaskScores: Record<string, number> = {};
       if (examData?.sections) {
         const writingSection = examData.sections.find(s => s.type === 'writing');
-        if (writingSection && existingScores.writing) {
-          // If we have a single writing score, distribute it to tasks
-          writingSection.questions.forEach((question, index) => {
-            writingTaskScores[question.id] = existingScores.writing || 0;
-          });
+        if (writingSection) {
+          if (isAIGraded) {
+            // Use AI-provided individual scores
+            writingSection.questions.forEach((question) => {
+              const aiFeedback = existingFeedback[question.id];
+              if (aiFeedback?.bandScore) {
+                writingTaskScores[question.id] = aiFeedback.bandScore;
+              }
+            });
+          } else if (existingScores.writing) {
+            // Distribute single writing score to tasks
+            writingSection.questions.forEach((question) => {
+              writingTaskScores[question.id] = existingScores.writing || 0;
+            });
+          }
         }
       }
       
       setWritingScores(writingTaskScores);
-      setFeedback(existingFeedback);
+      
+      // Convert AI feedback to simple text for teacher interface
+      const simpleFeedback: Record<string, string> = {};
+      Object.entries(existingFeedback).forEach(([questionId, feedbackData]: [string, any]) => {
+        if (feedbackData?.assessedBy === 'AI') {
+          simpleFeedback[questionId] = `AI Assessment:\n\nBand Score: ${feedbackData.bandScore}\n\nFeedback: ${feedbackData.feedback}\n\nStrengths:\n${feedbackData.strengths?.map((s: string) => `• ${s}`).join('\n') || 'None listed'}\n\nImprovements:\n${feedbackData.improvements?.map((i: string) => `• ${i}`).join('\n') || 'None listed'}`;
+        } else {
+          simpleFeedback[questionId] = typeof feedbackData === 'string' ? feedbackData : feedbackData?.feedback || '';
+        }
+      });
+      
+      setFeedback(simpleFeedback);
     } catch (error) {
       console.error('Error loading attempt details:', error);
+    }
+  };
+
+  const isAIGraded = (attempt: ExamAttempt) => {
+    try {
+      const feedbackData = typeof attempt.writing_feedback === 'string' 
+        ? JSON.parse(attempt.writing_feedback) 
+        : attempt.writing_feedback || {};
+      
+      return Object.values(feedbackData).some((feedback: any) => 
+        feedback?.assessedBy === 'AI'
+      );
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const handleOverrideAIGrading = async () => {
+    if (!selectedAttempt || !exam) return;
+    
+    if (window.confirm('This will override the AI grading. Are you sure you want to proceed?')) {
+      try {
+        // Clear AI feedback and allow manual grading
+        const clearedFeedback = Object.fromEntries(
+          exam.sections
+            .find(s => s.type === 'writing')
+            ?.questions.map(q => [q.id, '']) || []
+        );
+        
+        setFeedback(clearedFeedback);
+        setWritingScores({});
+        
+        alert('AI grading cleared. You can now provide manual grading.');
+      } catch (error) {
+        console.error('Error clearing AI grading:', error);
+        alert('Error clearing AI grading. Please try again.');
+      }
     }
   };
 
@@ -107,10 +170,23 @@ const StudentGrading: React.FC = () => {
       // Calculate new overall band score
       const overallBand = ScoringSystem.calculateOverallBandScore(updatedScores);
 
+      // Create teacher feedback object
+      const teacherFeedback = Object.fromEntries(
+        Object.entries(feedback).map(([questionId, feedbackText]) => [
+          questionId,
+          {
+            feedback: feedbackText,
+            bandScore: writingScores[questionId] || 0,
+            assessedBy: 'teacher',
+            assessedAt: new Date().toISOString()
+          }
+        ])
+      );
+
       // Update the attempt with writing scores and feedback
       await DatabaseService.updateExamAttempt(selectedAttempt.id, {
         scores: JSON.stringify(updatedScores),
-        writing_feedback: JSON.stringify(feedback),
+        writing_feedback: JSON.stringify(teacherFeedback),
         overall_band: overallBand,
         status: 'graded'
       });
@@ -156,6 +232,8 @@ const StudentGrading: React.FC = () => {
       ? JSON.parse(selectedAttempt.answers)
       : selectedAttempt.answers || {};
     
+    const aiGraded = isAIGraded(selectedAttempt);
+    
     return (
       <div className="min-h-screen bg-gray-50">
         {/* Navigation */}
@@ -174,10 +252,20 @@ const StudentGrading: React.FC = () => {
                   <ArrowLeft className="h-4 w-4 mr-1" />
                   Back to Grading Queue
                 </button>
-                <h1 className="text-xl font-semibold text-gray-900">Grade Student Submission</h1>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  Grade Student Submission {aiGraded && '(AI Pre-Graded)'}
+                </h1>
               </div>
               
               <div className="flex items-center space-x-4">
+                {aiGraded && (
+                  <button
+                    onClick={handleOverrideAIGrading}
+                    className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+                  >
+                    Override AI Grading
+                  </button>
+                )}
                 <button
                   onClick={saveGrading}
                   className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors"
@@ -191,6 +279,22 @@ const StudentGrading: React.FC = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="space-y-6">
+            {/* AI Grading Notice */}
+            {aiGraded && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="text-blue-600 mr-3">🤖</div>
+                  <div>
+                    <h3 className="font-semibold text-blue-900">AI Pre-Graded Submission</h3>
+                    <p className="text-blue-800 text-sm">
+                      This writing submission has been automatically graded by AI. You can review the assessment, 
+                      make adjustments, or override it completely with your own grading.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Student Info */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Student Information</h2>
@@ -240,7 +344,9 @@ const StudentGrading: React.FC = () => {
             {/* Writing Tasks Grading */}
             {writingSection && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Writing Tasks</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">
+                  Writing Tasks {aiGraded && '(AI Assessed)'}
+                </h2>
                 
                 <div className="space-y-8">
                   {writingSection.questions.map((question, index) => {
@@ -301,14 +407,17 @@ const StudentGrading: React.FC = () => {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Feedback & Comments
+                            Feedback & Comments {aiGraded && '(Pre-filled by AI)'}
                           </label>
                           <textarea
                             value={feedback[question.id] || ''}
                             onChange={(e) => handleFeedbackChange(question.id, e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            rows={4}
-                            placeholder="Provide detailed feedback on task achievement, coherence and cohesion, lexical resource, and grammatical range and accuracy..."
+                            rows={aiGraded ? 8 : 4}
+                            placeholder={aiGraded 
+                              ? "AI feedback is pre-filled. You can edit or replace it with your own assessment..."
+                              : "Provide detailed feedback on task achievement, coherence and cohesion, lexical resource, and grammatical range and accuracy..."
+                            }
                           />
                         </div>
                       </div>
@@ -343,7 +452,7 @@ const StudentGrading: React.FC = () => {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Student Grading</h1>
-            <p className="text-gray-600 mt-2">Review and grade student exam submissions</p>
+            <p className="text-gray-600 mt-2">Review and grade student exam submissions (AI-assisted)</p>
           </div>
 
           {/* Stats */}
@@ -362,7 +471,7 @@ const StudentGrading: React.FC = () => {
               <div className="flex items-center">
                 <Clock className="h-8 w-8 text-orange-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Pending Grading</p>
+                  <p className="text-sm font-medium text-gray-600">Pending Review</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {examAttempts.filter(a => a.status === 'completed').length}
                   </p>
@@ -374,9 +483,9 @@ const StudentGrading: React.FC = () => {
               <div className="flex items-center">
                 <Award className="h-8 w-8 text-green-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Graded</p>
+                  <p className="text-sm font-medium text-gray-600">AI Graded</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {examAttempts.filter(a => a.status === 'graded').length}
+                    {examAttempts.filter(a => a.status === 'graded' && isAIGraded(a)).length}
                   </p>
                 </div>
               </div>
@@ -436,6 +545,7 @@ const StudentGrading: React.FC = () => {
                         attempt={attempt} 
                         onViewAttempt={handleViewAttempt}
                         getBandColor={getBandColor}
+                        isAIGraded={isAIGraded(attempt)}
                       />
                     ))}
                   </tbody>
@@ -460,7 +570,8 @@ const ExamAttemptRow: React.FC<{
   attempt: ExamAttempt;
   onViewAttempt: (attempt: ExamAttempt) => void;
   getBandColor: (band: number) => string;
-}> = ({ attempt, onViewAttempt, getBandColor }) => {
+  isAIGraded: boolean;
+}> = ({ attempt, onViewAttempt, getBandColor, isAIGraded }) => {
   const [examTitle, setExamTitle] = useState('Loading...');
   const [studentName, setStudentName] = useState('Loading...');
 
@@ -508,13 +619,20 @@ const ExamAttemptRow: React.FC<{
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          attempt.status === 'graded' 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-yellow-100 text-yellow-800'
-        }`}>
-          {attempt.status === 'graded' ? 'Graded' : 'Pending Review'}
-        </span>
+        <div className="flex flex-col space-y-1">
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+            attempt.status === 'graded' 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-yellow-100 text-yellow-800'
+          }`}>
+            {attempt.status === 'graded' ? 'Graded' : 'Pending Review'}
+          </span>
+          {isAIGraded && (
+            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+              🤖 AI Graded
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
         <button
@@ -524,12 +642,12 @@ const ExamAttemptRow: React.FC<{
           {attempt.status === 'graded' ? (
             <>
               <Eye className="h-4 w-4 mr-1" />
-              View
+              Review
             </>
           ) : (
             <>
               <Edit className="h-4 w-4 mr-1" />
-              Grade
+              {isAIGraded ? 'Review AI' : 'Grade'}
             </>
           )}
         </button>
