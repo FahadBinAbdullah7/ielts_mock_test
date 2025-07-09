@@ -216,7 +216,7 @@ const ExamInterface: React.FC = () => {
                   <div key={section.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
                     <span className="font-medium capitalize">{section.name}</span>
                     <span className="text-sm text-gray-600">
-                      {section.timeLimit} minutes • {section.questions.length} questions
+                      60 minutes • {section.questions.length} questions
                     </span>
                   </div>
                 ))}

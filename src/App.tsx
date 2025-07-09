@@ -11,6 +11,7 @@ import ExamResults from './pages/ExamResults';
 import CreateExam from './pages/CreateExam';
 import ExamManagement from './pages/ExamManagement';
 import StudentGrading from './pages/StudentGrading';
+import StudentExamHistory from './pages/StudentExamHistory';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
 
@@ -39,6 +40,11 @@ function App() {
           <Route path="/student/results" element={
             <ProtectedRoute>
               <ExamResults />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/exams" element={
+            <ProtectedRoute>
+              <StudentExamHistory />
             </ProtectedRoute>
           } />
           

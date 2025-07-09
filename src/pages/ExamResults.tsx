@@ -217,10 +217,16 @@ const ExamResults: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex justify-center space-x-4 mt-8">
           <Link
-            to="/student/exams"
+            to="/student/dashboard"
             className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
           >
-            Take Another Test
+            Back to Dashboard
+          </Link>
+          <Link
+            to="/student/exams"
+            className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors"
+          >
+            View Exam History
           </Link>
           <button
             onClick={() => window.print()}

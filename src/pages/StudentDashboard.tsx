@@ -131,7 +131,15 @@ const StudentDashboard: React.FC = () => {
           {/* Recent Exams */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Recent Exam Attempts</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Recent Exam Attempts</h2>
+                <Link
+                  to="/student/exams"
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  View All Attempts
+                </Link>
+              </div>
             </div>
             <div className="p-6 space-y-4">
               {recentAttempts.length > 0 ? (
@@ -146,10 +154,10 @@ const StudentDashboard: React.FC = () => {
                 </div>
               )}
               <Link
-                to="/student/results"
+                to="/student/exams"
                 className="block text-center text-blue-600 hover:text-blue-700 font-medium"
               >
-                View All Results
+                View Exam History
               </Link>
             </div>
           </div>

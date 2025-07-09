@@ -85,7 +85,7 @@ export const sampleExam: Exam = {
       name: 'Listening',
       type: 'listening',
       questions: sampleQuestions.filter(q => q.section === 'listening'),
-      timeLimit: 30,
+      timeLimit: 60,
       instructions: 'Listen to the audio recordings and answer the questions. You will hear each recording only once.'
     },
     {

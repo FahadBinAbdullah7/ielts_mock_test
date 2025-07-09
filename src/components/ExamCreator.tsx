@@ -270,7 +270,7 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
       name: currentSection.charAt(0).toUpperCase() + currentSection.slice(1),
       type: currentSection,
       questions: allQuestions,
-      timeLimit: currentSection === 'reading' ? 60 : currentSection === 'listening' ? 30 : 60,
+      timeLimit: 60, // All sections are 60 minutes for IELTS
       instructions: getSectionInstructions(currentSection)
     };
 
@@ -284,11 +284,11 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
   const getSectionInstructions = (section: string): string => {
     switch (section) {
       case 'reading':
-        return 'Read the passages carefully and answer all questions. You have 60 minutes to complete this section.';
+        return 'Read the passages carefully and answer all questions. You have 60 minutes to complete this section. There are 3 passages with 40 questions total.';
       case 'listening':
-        return 'Listen to the audio recording and answer the questions. You can replay the audio as many times as needed.';
+        return 'Listen to the audio recording and answer the questions. You have 60 minutes to complete this section. You can replay the audio as many times as needed.';
       case 'writing':
-        return 'Complete both writing tasks. Task 1: 20 minutes (150+ words), Task 2: 40 minutes (250+ words).';
+        return 'Complete both writing tasks within 60 minutes. Task 1: 20 minutes (150+ words), Task 2: 40 minutes (250+ words).';
       default:
         return '';
     }
