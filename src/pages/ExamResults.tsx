@@ -5,19 +5,19 @@ import { ScoringSystem } from '../utils/scoring';
 
 const ExamResults: React.FC = () => {
   const location = useLocation();
-  const { examId, answers, scores, overallBand, attemptId } = location.state || {};
+  const { examId, answers, scores, overallBand, attemptId, writingFeedback } = location.state || {};
   const [writingGrades, setWritingGrades] = useState<any>({});
-  const [writingFeedback, setWritingFeedback] = useState<any>({});
+  const [detailedFeedback, setDetailedFeedback] = useState<any>(writingFeedback || {});
   const [finalOverallBand, setFinalOverallBand] = useState(overallBand);
 
   useEffect(() => {
     if (attemptId) {
       // Load writing grades and feedback from teacher
       const savedScores = JSON.parse(localStorage.getItem(`writing_scores_${attemptId}`) || '{}');
-      const savedFeedback = JSON.parse(localStorage.getItem(`writing_feedback_${attemptId}`) || '{}');
+      const savedFeedback = writingFeedback || JSON.parse(localStorage.getItem(`writing_feedback_${attemptId}`) || '{}');
       
       setWritingGrades(savedScores);
-      setWritingFeedback(savedFeedback);
+      setDetailedFeedback(savedFeedback);
 
       // Calculate final overall band including writing scores
       if (Object.keys(savedScores).length > 0) {
@@ -110,43 +110,110 @@ const ExamResults: React.FC = () => {
         </div>
 
         {/* Writing Feedback from Teacher */}
-        {Object.keys(writingFeedback).length > 0 && (
+        {Object.keys(detailedFeedback).length > 0 && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
             <div className="flex items-center mb-4">
               <MessageSquare className="h-6 w-6 text-blue-600 mr-2" />
-              <h3 className="text-xl font-semibold text-gray-900">Teacher Feedback</h3>
+              <h3 className="text-xl font-semibold text-gray-900">
+                Writing Assessment {Object.values(detailedFeedback)[0]?.assessedBy === 'AI' ? '(AI Graded)' : '(Teacher Graded)'}
+              </h3>
             </div>
             
             <div className="space-y-6">
-              {Object.entries(writingFeedback).map(([questionId, feedback], index) => (
+              {Object.entries(detailedFeedback).map(([questionId, feedbackData], index) => {
+                const isAIGraded = feedbackData?.assessedBy === 'AI';
+                
+                return (
                 <div key={questionId} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-semibold text-gray-900">Writing Task {index + 1}</h4>
-                    {writingGrades[questionId] && (
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getBandColor(writingGrades[questionId])}`}>
-                        Band {writingGrades[questionId]}
+                    <div className="flex items-center space-x-2">
+                      {feedbackData?.bandScore && (
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getBandColor(feedbackData.bandScore)}`}>
+                          Band {feedbackData.bandScore}
+                        </span>
+                      )}
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        isAIGraded ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {isAIGraded ? '🤖 AI Graded' : '👨‍🏫 Teacher Graded'}
                       </span>
-                    )}
+                    </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-gray-700 whitespace-pre-wrap">{feedback}</p>
+                  
+                  {/* AI Detailed Assessment */}
+                  {isAIGraded && feedbackData?.criteria && (
+                    <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="text-center p-2 bg-blue-50 rounded">
+                        <div className="text-xs text-blue-600 font-medium">Task Achievement</div>
+                        <div className="text-lg font-bold text-blue-800">{feedbackData.criteria.taskAchievement}</div>
+                      </div>
+                      <div className="text-center p-2 bg-green-50 rounded">
+                        <div className="text-xs text-green-600 font-medium">Coherence & Cohesion</div>
+                        <div className="text-lg font-bold text-green-800">{feedbackData.criteria.coherenceCohesion}</div>
+                      </div>
+                      <div className="text-center p-2 bg-purple-50 rounded">
+                        <div className="text-xs text-purple-600 font-medium">Lexical Resource</div>
+                        <div className="text-lg font-bold text-purple-800">{feedbackData.criteria.lexicalResource}</div>
+                      </div>
+                      <div className="text-center p-2 bg-orange-50 rounded">
+                        <div className="text-xs text-orange-600 font-medium">Grammar & Accuracy</div>
+                        <div className="text-lg font-bold text-orange-800">{feedbackData.criteria.grammaticalRange}</div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Feedback Text */}
+                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                    <h5 className="font-medium text-gray-900 mb-2">Detailed Feedback:</h5>
+                    <p className="text-gray-700 whitespace-pre-wrap">{feedbackData?.feedback || feedbackData}</p>
                   </div>
+                  
+                  {/* AI Strengths and Improvements */}
+                  {isAIGraded && feedbackData?.strengths && feedbackData?.improvements && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        <h5 className="font-medium text-green-800 mb-2">✅ Strengths:</h5>
+                        <ul className="text-green-700 text-sm space-y-1">
+                          {feedbackData.strengths.map((strength: string, idx: number) => (
+                            <li key={idx}>• {strength}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="bg-orange-50 p-3 rounded-lg">
+                        <h5 className="font-medium text-orange-800 mb-2">🎯 Areas for Improvement:</h5>
+                        <ul className="text-orange-700 text-sm space-y-1">
+                          {feedbackData.improvements.map((improvement: string, idx: number) => (
+                            <li key={idx}>• {improvement}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Word Count */}
+                  {feedbackData?.wordCount && (
+                    <div className="mt-3 text-sm text-gray-600">
+                      Word count: {feedbackData.wordCount} words
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Writing Section Note */}
-        {Object.keys(writingGrades).length === 0 && (
+        {Object.keys(detailedFeedback).length === 0 && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
             <div className="flex items-center mb-2">
               <PenTool className="h-6 w-6 text-yellow-600 mr-2" />
               <h3 className="text-lg font-semibold text-yellow-800">Writing Section</h3>
             </div>
             <p className="text-yellow-700">
-              Your writing responses have been submitted for teacher evaluation. 
-              You will receive your writing band score and detailed feedback within 48 hours.
+              Your writing responses are being processed. If AI grading is available, you'll receive instant feedback. 
+              Otherwise, your responses will be reviewed by a teacher within 48 hours.
             </p>
           </div>
         )}

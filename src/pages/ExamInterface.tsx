@@ -6,6 +6,7 @@ import QuestionCard from '../components/QuestionCard';
 import { ExamStorage } from '../utils/examStorage';
 import { DatabaseService } from '../lib/database';
 import { ScoringSystem } from '../utils/scoring';
+import { GeminiAI } from '../lib/geminiAI';
 import { Exam, ExamAttempt } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -122,11 +123,17 @@ const ExamInterface: React.FC = () => {
   const handleSubmitExam = async () => {
     if (!student || !attemptId) return;
 
+    // Show loading state
+    const loadingToast = document.createElement('div');
+    loadingToast.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    loadingToast.innerHTML = '🤖 AI is grading your writing... Please wait.';
+    document.body.appendChild(loadingToast);
     try {
       // Calculate scores for reading and listening sections
       const scores: Record<string, number> = {};
       let totalBand = 0;
       let scoredSections = 0;
+      let writingFeedback: Record<string, any> = {};
 
       exam.sections.forEach(section => {
         if (section.type === 'reading') {
@@ -145,6 +152,69 @@ const ExamInterface: React.FC = () => {
         // Writing will be graded by teacher later
       });
 
+      // AI-powered writing assessment
+      const writingSection = exam.sections.find(s => s.type === 'writing');
+      if (writingSection && writingSection.questions.length > 0) {
+        try {
+          const writingSubmissions = writingSection.questions.map((question, index) => ({
+            taskType: (index === 0 ? 'task1' : 'task2') as 'task1' | 'task2',
+            question: question.question,
+            answer: answers[question.id] || '',
+            questionId: question.id,
+            imageUrl: question.imageUrl
+          }));
+
+          const aiAssessments = await GeminiAI.batchAssessWriting(writingSubmissions);
+          
+          // Calculate writing band score from AI assessments
+          const writingScores = Object.values(aiAssessments).map(assessment => assessment.bandScore);
+          const writingBand = writingScores.reduce((sum, score) => sum + score, 0) / writingScores.length;
+          
+          scores.writing = Math.round(writingBand * 2) / 2; // Round to nearest 0.5
+          totalBand += scores.writing;
+          scoredSections++;
+          
+          // Store detailed AI feedback
+          writingFeedback = Object.fromEntries(
+            Object.entries(aiAssessments).map(([questionId, assessment]) => [
+              questionId,
+              {
+                bandScore: assessment.bandScore,
+                criteria: {
+                  taskAchievement: assessment.taskAchievement,
+                  coherenceCohesion: assessment.coherenceCohesion,
+                  lexicalResource: assessment.lexicalResource,
+                  grammaticalRange: assessment.grammaticalRange
+                },
+                feedback: assessment.feedback,
+                strengths: assessment.strengths,
+                improvements: assessment.improvements,
+                wordCount: assessment.wordCount,
+                assessedBy: 'AI',
+                assessedAt: new Date().toISOString()
+              }
+            ])
+          );
+          
+          // Update loading message
+          loadingToast.innerHTML = '✅ AI grading completed! Submitting exam...';
+        } catch (aiError) {
+          console.error('AI writing assessment failed:', aiError);
+          loadingToast.innerHTML = '⚠️ AI grading failed. Submitting for manual review...';
+          
+          // Fallback: mark for manual grading
+          writingFeedback = Object.fromEntries(
+            writingSection.questions.map(question => [
+              question.id,
+              {
+                feedback: `AI assessment failed: ${aiError.message}. Marked for manual review.`,
+                assessedBy: 'pending',
+                assessedAt: new Date().toISOString()
+              }
+            ])
+          );
+        }
+      }
       const overallBand = scoredSections > 0 ? totalBand / scoredSections : 0;
 
       // Update exam attempt in database
@@ -153,8 +223,12 @@ const ExamInterface: React.FC = () => {
         scores: JSON.stringify(scores),
         overall_band: Math.round(overallBand * 10) / 10,
         completed_at: new Date().toISOString(),
-        status: 'completed'
+        status: scores.writing ? 'graded' : 'completed', // If AI graded writing, mark as graded
+        writing_feedback: JSON.stringify(writingFeedback)
       });
+
+      // Remove loading toast
+      document.body.removeChild(loadingToast);
 
       // Navigate to results page
       navigate('/student/results', { 
@@ -164,10 +238,16 @@ const ExamInterface: React.FC = () => {
           answers,
           scores,
           overallBand: Math.round(overallBand * 10) / 10,
-          attemptId: attemptId
+          attemptId: attemptId,
+          writingFeedback
         }
       });
     } catch (error) {
+      // Remove loading toast on error
+      if (document.body.contains(loadingToast)) {
+        document.body.removeChild(loadingToast);
+      }
+      
       console.error('Error submitting exam:', error);
       alert('Error submitting exam. Please try again.');
     }
