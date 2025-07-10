@@ -324,6 +324,13 @@ const ExamInterface: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
+              <Link
+                to="/student/dashboard"
+                className="flex items-center text-blue-600 hover:text-blue-700"
+              >
+                <ArrowLeft className="h-5 w-5 mr-1" />
+                Dashboard
+              </Link>
               <h1 className="text-lg font-semibold text-gray-900 capitalize">
                 {currentSection.name} Section
               </h1>

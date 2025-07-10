@@ -62,11 +62,14 @@ const AdminDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Shield className="h-8 w-8 text-red-600" />
+              <Home className="h-8 w-8 text-red-600" />
               <span className="ml-2 text-xl font-bold text-gray-900">IELTS Admin Panel</span>
             </div>
             
             <div className="flex items-center space-x-4">
+              <Link to="/admin/dashboard" className="text-gray-700 hover:text-red-600 font-medium">Dashboard</Link>
+              <Link to="/admin/exams" className="text-gray-700 hover:text-red-600 font-medium">Manage Exams</Link>
+              <Link to="/admin/grading" className="text-gray-700 hover:text-red-600 font-medium">Grade Students</Link>
               <span className="text-sm text-gray-500">Administrator</span>
               <button 
                 onClick={handleLogout}

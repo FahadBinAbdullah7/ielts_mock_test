@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { Award, BookOpen, Headphones, PenTool, ArrowLeft, MessageSquare } from 'lucide-react';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { Award, BookOpen, Headphones, PenTool, ArrowLeft, MessageSquare, Home, LogOut } from 'lucide-react';
 import { ScoringSystem } from '../utils/scoring';
+import { useAuth } from '../contexts/AuthContext';
 
 const ExamResults: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { student, signOut } = useAuth();
   const { examId, answers, scores, overallBand, attemptId, writingFeedback } = location.state || {};
   const [writingGrades, setWritingGrades] = useState<any>({});
   const [detailedFeedback, setDetailedFeedback] = useState<any>(writingFeedback || {});
@@ -28,6 +31,11 @@ const ExamResults: React.FC = () => {
       }
     }
   }, [attemptId, scores]);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   const getSectionIcon = (section: string) => {
     switch (section) {
@@ -53,15 +61,43 @@ const ExamResults: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <Home className="h-8 w-8 text-blue-600" />
+              <span className="ml-2 text-xl font-bold text-gray-900">IELTS Student Portal</span>
+            </div>
+            
+            <div className="flex items-center space-x-6">
+              <Link to="/student/dashboard" className="text-gray-700 hover:text-blue-600 font-medium">Dashboard</Link>
+              <Link to="/student/exams" className="text-gray-700 hover:text-blue-600 font-medium">Exam History</Link>
+              <Link to="/student/results" className="text-blue-600 font-medium">Results</Link>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-500">Welcome, {student?.name}</span>
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="ml-1">Logout</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <Link
-            to="/student"
+            to="/student/dashboard"
             className="flex items-center text-blue-600 hover:text-blue-700 mb-4"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
-            Back to Dashboard
+            Dashboard
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Exam Results</h1>
           <p className="text-gray-600 mt-2">Your IELTS mock test performance</p>

@@ -87,12 +87,15 @@ const ExamManagement: React.FC = () => {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link to="/admin/dashboard" className="text-blue-600 hover:text-blue-700 mr-4">
-                ← Back to Dashboard
+                ← Dashboard
               </Link>
               <h1 className="text-xl font-semibold text-gray-900">Exam Management</h1>
             </div>
             
             <div className="flex items-center space-x-4">
+              <Link to="/admin/dashboard" className="text-gray-700 hover:text-blue-600 font-medium">Dashboard</Link>
+              <Link to="/admin/exams" className="text-blue-600 font-medium">Manage Exams</Link>
+              <Link to="/admin/grading" className="text-gray-700 hover:text-blue-600 font-medium">Grade Students</Link>
               <Link
                 to="/admin/exams/create"
                 className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center"

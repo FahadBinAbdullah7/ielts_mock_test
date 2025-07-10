@@ -305,9 +305,14 @@ const StudentExamHistory: React.FC = () => {
                 className="flex items-center text-blue-600 hover:text-blue-700 mr-4"
               >
                 <ArrowLeft className="h-5 w-5 mr-2" />
-                Back to Dashboard
+                Dashboard
               </Link>
               <h1 className="text-xl font-semibold text-gray-900">Exam History</h1>
+            </div>
+            <div className="flex items-center space-x-6">
+              <Link to="/student/dashboard" className="text-gray-700 hover:text-blue-600 font-medium">Dashboard</Link>
+              <Link to="/student/exams" className="text-blue-600 font-medium">Exam History</Link>
+              <Link to="/student/results" className="text-gray-700 hover:text-blue-600 font-medium">Results</Link>
             </div>
           </div>
         </div>

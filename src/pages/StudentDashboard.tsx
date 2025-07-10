@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FileText, Clock, Award, TrendingUp } from 'lucide-react';
-import Layout from '../components/Layout';
+import { Link, useNavigate } from 'react-router-dom';
+import { FileText, Clock, Award, TrendingUp, LogOut, Home } from 'lucide-react';
 import { ExamStorage } from '../utils/examStorage';
 import { DatabaseService } from '../lib/database';
 import { Exam, ExamAttempt } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
 const StudentDashboard: React.FC = () => {
-  const { student } = useAuth();
+  const { student, signOut } = useAuth();
+  const navigate = useNavigate();
   const [availableExams, setAvailableExams] = useState<Exam[]>([]);
   const [recentAttempts, setRecentAttempts] = useState<ExamAttempt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,21 +55,55 @@ const StudentDashboard: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   if (loading) {
     return (
-      <Layout userRole="student">
+      <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading dashboard...</p>
           </div>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   return (
-    <Layout userRole="student">
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <Home className="h-8 w-8 text-blue-600" />
+              <span className="ml-2 text-xl font-bold text-gray-900">IELTS Student Portal</span>
+            </div>
+            
+            <div className="flex items-center space-x-6">
+              <Link to="/student/dashboard" className="text-gray-700 hover:text-blue-600 font-medium">Dashboard</Link>
+              <Link to="/student/exams" className="text-gray-700 hover:text-blue-600 font-medium">Exam History</Link>
+              <Link to="/student/results" className="text-gray-700 hover:text-blue-600 font-medium">Results</Link>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-500">Welcome, {student?.name}</span>
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="ml-1">Logout</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="space-y-8">
         {/* Header */}
         <div>
@@ -213,7 +247,8 @@ const StudentDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
+      </div>
+    </div>
   );
 };
 

@@ -505,36 +505,24 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
   );
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6 pt-2">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={onCancel}
-                className="flex items-center text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Back
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {existingExam ? 'Edit IELTS Exam' : 'Create New IELTS Exam'}
-              </h1>
-            </div>
-            <button
-              onClick={saveExam}
-              className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center"
-            >
-              <Save className="h-5 w-5 mr-2" />
-              {existingExam ? 'Update Exam' : 'Save Exam'}
-            </button>
-          </div>
-        </div>
 
         <div className="p-6">
           {/* Exam Title */}
           <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {existingExam ? 'Edit IELTS Exam' : 'Create New IELTS Exam'}
+              </h1>
+              <button
+                onClick={saveExam}
+                className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center"
+              >
+                <Save className="h-5 w-5 mr-2" />
+                {existingExam ? 'Update Exam' : 'Save Exam'}
+              </button>
+            </div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Exam Title</label>
             <input
               type="text"
