@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Flag, CheckCircle } from 'lucide-react';
 import Timer from '../components/Timer';
 import QuestionCard from '../components/QuestionCard';
