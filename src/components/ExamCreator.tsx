@@ -22,86 +22,6 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
   // Listening specific state - one audio file for all questions
   const [listeningAudio, setListeningAudio] = useState<string>('');
 
-  // Initialize form with existing exam data
-  useEffect(() => {
-    if (existingExam) {
-      // Load existing sections into the form
-      const readingSection = existingExam.sections.find(s => s.type === 'reading');
-      const listeningSection = existingExam.sections.find(s => s.type === 'listening');
-      const writingSection = existingExam.sections.find(s => s.type === 'writing');
-      
-      // Load reading passages if they exist
-      if (readingSection) {
-        const existingPassages: Array<{ id: string; text: string; questions: Question[] }> = [];
-        const passageMap = new Map<string, { text: string; questions: Question[] }>();
-        
-        readingSection.questions.forEach(question => {
-          if (question.passage) {
-            if (!passageMap.has(question.passage)) {
-              passageMap.set(question.passage, {
-                text: question.passage,
-                questions: []
-              });
-            }
-            passageMap.get(question.passage)!.questions.push(question);
-          }
-        });
-        
-        let passageIndex = 1;
-        passageMap.forEach((data, passageText) => {
-          existingPassages.push({
-            id: `passage_${passageIndex}`,
-            text: passageText,
-            questions: data.questions
-          });
-          passageIndex++;
-        });
-        
-        setPassages(existingPassages);
-      }
-      
-      // Load listening audio and questions
-      if (listeningSection && listeningSection.questions.length > 0) {
-        const firstQuestion = listeningSection.questions[0];
-        if (firstQuestion.audioUrl) {
-          setListeningAudio(firstQuestion.audioUrl);
-        }
-        // Set current questions for listening section when editing
-        if (currentSection === 'listening') {
-          setCurrentQuestions(listeningSection.questions);
-        }
-      }
-      
-      // Load writing questions
-      if (writingSection && currentSection === 'writing') {
-        setCurrentQuestions(writingSection.questions);
-      }
-    }
-  }, [existingExam, currentSection]);
-
-  // Update current questions when switching sections in edit mode
-  useEffect(() => {
-    if (existingExam) {
-      const currentSectionData = existingExam.sections.find(s => s.type === currentSection);
-      if (currentSectionData) {
-        if (currentSection === 'reading') {
-          // Reading questions are handled by passages state
-          setCurrentQuestions([]);
-        } else if (currentSection === 'listening') {
-          setCurrentQuestions(currentSectionData.questions);
-          // Set audio URL if available
-          if (currentSectionData.questions.length > 0 && currentSectionData.questions[0].audioUrl) {
-            setListeningAudio(currentSectionData.questions[0].audioUrl);
-          }
-        } else if (currentSection === 'writing') {
-          setCurrentQuestions(currentSectionData.questions);
-        }
-      } else {
-        setCurrentQuestions([]);
-      }
-    }
-  }, [currentSection, existingExam]);
-
   const createNewQuestion = (): Question => ({
     id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     section: currentSection,
@@ -298,9 +218,6 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
     let allQuestions: Question[] = [];
     let totalPoints = 0;
     
-    // Check if we're updating an existing section
-    const existingSectionIndex = sections.findIndex(s => s.type === currentSection);
-    
     if (currentSection === 'reading') {
       if (passages.length !== 3) {
         alert('Reading section must have exactly 3 passages');
@@ -357,16 +274,7 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
       instructions: getSectionInstructions(currentSection)
     };
 
-    if (existingSectionIndex >= 0) {
-      // Update existing section
-      const updatedSections = [...sections];
-      updatedSections[existingSectionIndex] = section;
-      setSections(updatedSections);
-    } else {
-      // Add new section
-      setSections([...sections, section]);
-    }
-    
+    setSections([...sections, section]);
     setCurrentQuestions([]);
     setPassages([]);
     setCurrentPassage('');
@@ -639,7 +547,7 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
                   }`}
                 >
                   {section.charAt(0).toUpperCase() + section.slice(1)}
-                  {(sections.find(s => s.type === section) || (existingExam?.sections.find(s => s.type === section))) && (
+                  {sections.find(s => s.type === section) && (
                     <span className="ml-2 text-green-600">✓</span>
                   )}
                 </button>
@@ -740,16 +648,9 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
                 <button
                   onClick={saveSection}
                   disabled={getReadingTotalPoints() !== 40}
-                  className={`w-full py-3 rounded-md transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${
-                    sections.find(s => s.type === 'reading') || (existingExam?.sections.find(s => s.type === 'reading'))
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
+                  className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {sections.find(s => s.type === 'reading') || (existingExam?.sections.find(s => s.type === 'reading'))
-                    ? 'Update Reading Section'
-                    : 'Complete Reading Section'
-                  } ({getReadingTotalPoints()}/40 points)
+                  Complete Reading Section ({getReadingTotalPoints()}/40 points)
                 </button>
               )}
             </div>
@@ -825,16 +726,9 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
                 <button
                   onClick={saveSection}
                   disabled={getTotalPoints(currentQuestions) !== 40}
-                  className={`w-full py-3 rounded-md transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${
-                    sections.find(s => s.type === 'listening') || (existingExam?.sections.find(s => s.type === 'listening'))
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
+                  className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {sections.find(s => s.type === 'listening') || (existingExam?.sections.find(s => s.type === 'listening'))
-                    ? 'Update Listening Section'
-                    : 'Complete Listening Section'
-                  } ({getTotalPoints(currentQuestions)}/40 points)
+                  Complete Listening Section ({getTotalPoints(currentQuestions)}/40 points)
                 </button>
               )}
             </div>
@@ -875,27 +769,19 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
               {currentQuestions.length === 2 && (
                 <button
                   onClick={saveSection}
-                  className={`w-full py-3 rounded-md transition-colors font-semibold ${
-                    sections.find(s => s.type === 'writing') || (existingExam?.sections.find(s => s.type === 'writing'))
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
+                  className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors font-semibold"
                 >
-                  {sections.find(s => s.type === 'writing') || (existingExam?.sections.find(s => s.type === 'writing'))
-                    ? 'Update Writing Section'
-                    : 'Complete Writing Section'
-                  } ({currentQuestions.length} tasks, {getTotalPoints(currentQuestions)} points)
+                  Complete Writing Section ({currentQuestions.length} tasks, {getTotalPoints(currentQuestions)} points)
                 </button>
               )}
             </div>
           )}
 
           {/* Created Sections Summary */}
-          {(sections.length > 0 || existingExam?.sections) && (
+          {sections.length > 0 && (
             <div className="mt-8 p-4 bg-gray-50 rounded-lg">
               <h3 className="font-semibold text-gray-900 mb-3">Created Sections</h3>
               <div className="space-y-2">
-                {/* Show updated sections */}
                 {sections.map((section) => (
                   <div key={section.id} className="flex items-center justify-between p-2 bg-white rounded border">
                     <span className="font-medium">{section.name}</span>
@@ -904,17 +790,6 @@ const ExamCreator: React.FC<ExamCreatorProps> = ({ onSave, onCancel, existingExa
                     </span>
                   </div>
                 ))}
-                {/* Show existing sections that haven't been updated */}
-                {existingExam?.sections
-                  .filter(existingSection => !sections.find(s => s.type === existingSection.type))
-                  .map((section) => (
-                    <div key={section.id} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
-                      <span className="font-medium text-blue-800">{section.name} (Original)</span>
-                      <span className="text-sm text-blue-600">
-                        {section.questions.length} questions • {getTotalPoints(section.questions)} points • {section.timeLimit} minutes
-                      </span>
-                    </div>
-                  ))}
               </div>
             </div>
           )}
