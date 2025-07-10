@@ -269,7 +269,7 @@ const ExamManagement: React.FC = () => {
                               className="text-green-600 hover:text-green-900 p-1"
                               title="Edit Exam"
                             >
-                              <Edit className="h-4 w-4" />
+                          title="Edit Exam - Full editing of all sections and questions"
                             </button>
                             <button 
                               onClick={() => handleDeleteExam(exam.id)}
@@ -300,6 +300,22 @@ const ExamManagement: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+      </div>
+      
+      {/* Help Section for Editing */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-8">
+        <h3 className="text-lg font-semibold text-blue-900 mb-2">📝 Editing Exams</h3>
+        <div className="text-blue-800 text-sm space-y-2">
+          <p><strong>Full Editing Power:</strong> Click the green edit button to modify any aspect of your exams.</p>
+          <p><strong>What you can edit:</strong></p>
+          <ul className="list-disc list-inside ml-4 space-y-1">
+            <li><strong>Reading Section:</strong> Edit all 3 passages, modify questions, change answer options, update correct answers</li>
+            <li><strong>Listening Section:</strong> Replace audio files, edit questions, modify answer choices</li>
+            <li><strong>Writing Section:</strong> Update task instructions, change prompts, modify scoring criteria</li>
+            <li><strong>General:</strong> Change exam title, activate/deactivate exams, adjust time limits</li>
+          </ul>
+          <p><strong>How to edit:</strong> Select the section tab you want to modify, make your changes, and save the section. Your changes will be preserved.</p>
         </div>
       </div>
     </div>
