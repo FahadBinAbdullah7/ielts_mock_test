@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Users, FileText, Clock, Award, Plus, LogOut, Shield } from 'lucide-react';
+import { Users, FileText, Clock, Award, Plus, LogOut, Shield, Home } from 'lucide-react';
 import { supabaseAdmin } from '../lib/supabase';
 
 const AdminDashboard: React.FC = () => {
