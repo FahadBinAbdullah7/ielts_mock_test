@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import ExamCreator from '../components/ExamCreator';
 import { Exam } from '../types';
 import { DatabaseService } from '../lib/database';
