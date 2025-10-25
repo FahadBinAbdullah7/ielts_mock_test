@@ -1,6 +1,6 @@
 # IELTS Mock Test Platform
 
-A comprehensive IELTS mock test platform with student registration, exam management, and admin functionality. Built with React, TypeScript, and Supabase.
+A comprehensive IELTS mock test platform with student registration, exam management, and admin functionality. Built with React, TypeScript, and Firebase/Firestore.
 
 ## 🚀 Features
 
@@ -17,14 +17,15 @@ A comprehensive IELTS mock test platform with student registration, exam managem
 - **Analytics**: View student performance and statistics
 
 ### Technical Features
-- **Supabase Integration**: Real-time database with PostgreSQL
+- **Firebase/Firestore Integration**: Real-time NoSQL database
+- **Firebase Authentication**: Secure email/password authentication
 - **Automatic Grading**: Reading and listening sections auto-graded
 - **Responsive Design**: Works on desktop and mobile devices
 - **Production Ready**: Deployable to Vercel, Netlify, etc.
 
 ## 🗄️ Database Support
 
-This platform uses **Supabase** (PostgreSQL) for all data storage including:
+This platform uses **Firebase Firestore** for all data storage including:
 - Student accounts and authentication
 - Exam definitions and questions
 - Student submissions and scores
@@ -33,7 +34,7 @@ This platform uses **Supabase** (PostgreSQL) for all data storage including:
 ## 🚀 Quick Setup
 
 ### Prerequisites
-1. **Supabase Account**: [Create a free account](https://supabase.com)
+1. **Firebase Account**: [Create a free account](https://firebase.google.com)
 2. **Node.js**: Version 16 or higher
 
 ### Installation Steps
@@ -49,20 +50,25 @@ This platform uses **Supabase** (PostgreSQL) for all data storage including:
    npm install
    ```
 
-3. **Set up Supabase**
-   - Create a new project in [Supabase Dashboard](https://app.supabase.com)
-   - Go to Settings → API to get your project URL and anon key
-   - Apply the database schema by running the migrations in `supabase/migrations/`
+3. **Set up Firebase**
+   - Create a new project in [Firebase Console](https://console.firebase.google.com)
+   - Enable Firestore Database
+   - Enable Email/Password Authentication
+   - Go to Project Settings → General to get your Firebase config
 
 4. **Configure environment variables**
    ```bash
    cp .env.example .env
    ```
-   
-   Edit `.env` with your Supabase credentials:
+
+   Edit `.env` with your Firebase credentials:
    ```env
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_public_anon_key
+   VITE_FIREBASE_API_KEY=your_firebase_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
    ```
 
 5. **Start development server**
@@ -81,80 +87,74 @@ This platform uses **Supabase** (PostgreSQL) for all data storage including:
 - Students can register at `/signup`
 - Students can login at `/login`
 
-## 🗃️ Database Schema
+## 🗃️ Firestore Collections
 
-The platform uses these main tables in Supabase:
+The platform uses these main collections in Firestore:
 
 ### `students`
-- Student accounts and authentication
-- Encrypted passwords with bcrypt
+- Student accounts and profile information
+- Stores email, name, and timestamps
 
-### `exams` 
+### `exams`
 - Exam definitions with sections and questions
-- JSON storage for flexible question structures
+- JSON-stringified sections for flexible structures
 
 ### `exam_attempts`
 - Student submissions and scores
 - Writing feedback from admin
 
 ### `media_files`
-- Images and audio files as binary data
-- Stored directly in PostgreSQL
+- Images and audio files as base64 data
+- Stored directly in Firestore
 
 ## 🔧 Environment Variables
 
 Create a `.env` file with the following variables:
 
 ```env
-# Supabase Configuration (Required)
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_public_anon_key
+# Firebase Configuration (Required)
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
 
-# Legacy Database Configuration (Optional - for reference)
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=ielts_platform
-DB_USER=your_username
-DB_PASSWORD=your_password
+# Gemini AI Configuration (Optional)
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
 
 # Application Settings
 NODE_ENV=development
 PORT=3000
-
-# Security
-JWT_SECRET=your_jwt_secret_here
-BCRYPT_ROUNDS=10
 ```
 
-**Important**: The `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are required for the application to work. You can find these in your Supabase project settings under the "API" section.
+**Important**: All Firebase configuration variables are required for the application to work. You can find these in your Firebase project settings under the "General" tab.
 
 ## 🚀 Deployment Options
 
-### Option 1: Vercel + Supabase
+### Option 1: Vercel + Firebase
 ```bash
 # 1. Push to GitHub
 git push origin main
 
 # 2. Connect Vercel to your GitHub repo
-# 3. Add environment variables in Vercel dashboard:
-#    VITE_SUPABASE_URL=your_supabase_project_url
-#    VITE_SUPABASE_ANON_KEY=your_supabase_public_anon_key
+# 3. Add Firebase environment variables in Vercel dashboard
 # 4. Deploy automatically
 ```
 
-### Option 2: Netlify + Supabase
+### Option 2: Netlify + Firebase
 ```bash
 # 1. Push to GitHub
 git push origin main
 
 # 2. Connect Netlify to GitHub
-# 3. Add environment variables in Netlify dashboard
+# 3. Add Firebase environment variables in Netlify dashboard
 # 4. Deploy automatically
 ```
 
 ### Option 3: Local Development
 ```bash
-# Using Supabase for local development
+# Using Firebase for local development
 npm install
 npm run dev
 ```
@@ -165,30 +165,33 @@ npm run dev
 src/
 ├── components/          # Reusable UI components
 ├── pages/              # Page components
-├── lib/                # Database and utilities
+├── lib/                # Firebase config and database utilities
 ├── contexts/           # React contexts
 ├── types/              # TypeScript type definitions
 └── utils/              # Helper functions
-
-supabase/
-└── migrations/         # Database schema migrations
 
 public/                 # Static assets
 ```
 
 ## 🎯 Key Features Explained
 
-### Supabase Integration
-- Real-time PostgreSQL database
-- Built-in authentication system
-- Row Level Security (RLS) for data protection
-- Automatic API generation
+### Firebase/Firestore Integration
+- Real-time NoSQL database
+- Cloud-native and scalable
+- Automatic indexing and querying
+- Built-in offline support
+
+### Firebase Authentication
+- Secure email/password authentication
+- Built-in user management
+- Session handling
+- Automatic token refresh
 
 ### Media File Storage
-- Images and audio files stored in database
+- Images and audio files stored in Firestore
 - Base64 encoding for efficient storage
 - No external file storage services needed
-- Scalable storage with PostgreSQL
+- Scalable storage with Firestore
 
 ### Automatic Grading
 - Reading and listening sections are automatically graded
@@ -201,10 +204,10 @@ public/                 # Static assets
 - Grade tracking and analytics
 
 ### Security
-- Password hashing with bcrypt
+- Firebase Authentication with secure password handling
 - Protected routes for students and admin
-- Supabase Row Level Security
-- SQL injection prevention
+- Firestore security rules
+- Client-side and server-side validation
 
 ## 🚀 Production Deployment
 
@@ -213,15 +216,19 @@ public/                 # Static assets
 1. **Connect GitHub to Vercel**
 2. **Add Environment Variables**:
    ```
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_public_anon_key
+   VITE_FIREBASE_API_KEY=your_firebase_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
    ```
 3. **Deploy automatically on push**
 
 ### Netlify Deployment
 
 1. **Connect GitHub to Netlify**
-2. **Add environment variables in Netlify dashboard**
+2. **Add Firebase environment variables in Netlify dashboard**
 3. **Deploy with auto-deploy enabled**
 
 ## 🤝 Contributing
@@ -254,4 +261,4 @@ The platform is actively maintained with regular updates for:
 
 ---
 
-**Ready to deploy?** Set up your Supabase project, add your environment variables, and deploy to your preferred platform!
+**Ready to deploy?** Set up your Firebase project, add your environment variables, and deploy to your preferred platform!
