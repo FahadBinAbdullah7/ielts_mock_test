@@ -1,18 +1,4 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  Timestamp,
-  getCountFromServer
-} from 'firebase/firestore';
-import { db } from './firebase';
+import { supabase } from './supabase';
 
 interface Student {
   id: string;
@@ -53,20 +39,25 @@ interface MediaFile {
   created_at: string;
 }
 
+// Database service functions using Supabase
 export class DatabaseService {
+  // Student operations
   static async createStudent(email: string, name: string, passwordHash: string) {
     try {
-      const studentRef = doc(collection(db, 'students'));
-      const studentData = {
-        email,
-        name,
-        password_hash: passwordHash,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      const { data, error } = await supabase
+        .from('students')
+        .insert([
+          {
+            email,
+            name,
+            password_hash: passwordHash
+          }
+        ])
+        .select()
+        .single();
 
-      await setDoc(studentRef, studentData);
-      return { insertId: studentRef.id };
+      if (error) throw error;
+      return { insertId: data.id };
     } catch (error) {
       console.error('Error creating student:', error);
       throw error;
@@ -75,14 +66,14 @@ export class DatabaseService {
 
   static async getStudentByEmail(email: string): Promise<Student | null> {
     try {
-      const studentsRef = collection(db, 'students');
-      const q = query(studentsRef, where('email', '==', email));
-      const querySnapshot = await getDocs(q);
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
 
-      if (querySnapshot.empty) return null;
-
-      const docSnap = querySnapshot.docs[0];
-      return { id: docSnap.id, ...docSnap.data() } as Student;
+      if (error) throw error;
+      return data || null;
     } catch (error) {
       console.error('Error getting student by email:', error);
       return null;
@@ -91,12 +82,14 @@ export class DatabaseService {
 
   static async getStudentById(id: string): Promise<Student | null> {
     try {
-      const docRef = doc(db, 'students', id);
-      const docSnap = await getDoc(docRef);
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
-      if (!docSnap.exists()) return null;
-
-      return { id: docSnap.id, ...docSnap.data() } as Student;
+      if (error) throw error;
+      return data || null;
     } catch (error) {
       console.error('Error getting student by id:', error);
       return null;
@@ -105,37 +98,44 @@ export class DatabaseService {
 
   static async getAllStudents(): Promise<Student[]> {
     try {
-      const studentsRef = collection(db, 'students');
-      const q = query(studentsRef, orderBy('created_at', 'desc'));
-      const querySnapshot = await getDocs(q);
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Student[];
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error('Error getting all students:', error);
       return [];
     }
   }
 
+  // Exam operations
   static async createExam(title: string, sections: any) {
     try {
       console.log('Creating exam with title:', title);
       console.log('Sections:', sections);
+      
+      const { data, error } = await supabase
+        .from('exams')
+        .insert([
+          {
+            title,
+            sections: JSON.stringify(sections),
+            is_active: true
+          }
+        ])
+        .select()
+        .single();
 
-      const examRef = doc(collection(db, 'exams'));
-      const examData = {
-        title,
-        sections: JSON.stringify(sections),
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      await setDoc(examRef, examData);
-      console.log('Exam created successfully:', examRef.id);
-      return { insertId: examRef.id };
+      if (error) {
+        console.error('Supabase error creating exam:', error);
+        throw error;
+      }
+      
+      console.log('Exam created successfully:', data);
+      return { insertId: data.id };
     } catch (error) {
       console.error('Error creating exam:', error);
       throw error;
@@ -145,17 +145,24 @@ export class DatabaseService {
   static async updateExam(id: string, title: string, sections: any, isActive: boolean) {
     try {
       console.log('Updating exam:', id, title);
+      
+      const { data, error } = await supabase
+        .from('exams')
+        .update({
+          title,
+          sections: JSON.stringify(sections),
+          is_active: isActive
+        })
+        .eq('id', id)
+        .select();
 
-      const examRef = doc(db, 'exams', id);
-      await updateDoc(examRef, {
-        title,
-        sections: JSON.stringify(sections),
-        is_active: isActive,
-        updated_at: new Date().toISOString()
-      });
-
-      console.log('Exam updated successfully');
-      return { affectedRows: 1 };
+      if (error) {
+        console.error('Supabase error updating exam:', error);
+        throw error;
+      }
+      
+      console.log('Exam updated successfully:', data);
+      return { affectedRows: data?.length || 0 };
     } catch (error) {
       console.error('Error updating exam:', error);
       throw error;
@@ -164,14 +171,13 @@ export class DatabaseService {
 
   static async getAllExams(): Promise<Exam[]> {
     try {
-      const examsRef = collection(db, 'exams');
-      const q = query(examsRef, orderBy('created_at', 'desc'));
-      const querySnapshot = await getDocs(q);
+      const { data, error } = await supabase
+        .from('exams')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Exam[];
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error('Error getting all exams:', error);
       return [];
@@ -180,14 +186,14 @@ export class DatabaseService {
 
   static async getActiveExams(): Promise<Exam[]> {
     try {
-      const examsRef = collection(db, 'exams');
-      const q = query(examsRef, where('is_active', '==', true), orderBy('created_at', 'desc'));
-      const querySnapshot = await getDocs(q);
+      const { data, error } = await supabase
+        .from('exams')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Exam[];
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error('Error getting active exams:', error);
       return [];
@@ -196,12 +202,14 @@ export class DatabaseService {
 
   static async getExamById(id: string): Promise<Exam | null> {
     try {
-      const docRef = doc(db, 'exams', id);
-      const docSnap = await getDoc(docRef);
+      const { data, error } = await supabase
+        .from('exams')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
-      if (!docSnap.exists()) return null;
-
-      return { id: docSnap.id, ...docSnap.data() } as Exam;
+      if (error) throw error;
+      return data || null;
     } catch (error) {
       console.error('Error getting exam by id:', error);
       return null;
@@ -210,8 +218,12 @@ export class DatabaseService {
 
   static async deleteExam(id: string) {
     try {
-      const examRef = doc(db, 'exams', id);
-      await deleteDoc(examRef);
+      const { error } = await supabase
+        .from('exams')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
       return { affectedRows: 1 };
     } catch (error) {
       console.error('Error deleting exam:', error);
@@ -219,23 +231,27 @@ export class DatabaseService {
     }
   }
 
+  // Exam attempt operations
   static async createExamAttempt(examId: string, studentId: string) {
     try {
-      const attemptRef = doc(collection(db, 'exam_attempts'));
-      const attemptData = {
-        exam_id: examId,
-        student_id: studentId,
-        status: 'in-progress',
-        answers: '{}',
-        scores: '{}',
-        overall_band: 0,
-        writing_feedback: '{}',
-        started_at: new Date().toISOString(),
-        completed_at: null
-      };
+      const { data, error } = await supabase
+        .from('exam_attempts')
+        .insert([
+          {
+            exam_id: examId,
+            student_id: studentId,
+            status: 'in-progress',
+            answers: '{}',
+            scores: '{}',
+            overall_band: 0,
+            writing_feedback: '{}'
+          }
+        ])
+        .select()
+        .single();
 
-      await setDoc(attemptRef, attemptData);
-      return { insertId: attemptRef.id };
+      if (error) throw error;
+      return { insertId: data.id };
     } catch (error) {
       console.error('Error creating exam attempt:', error);
       throw error;
@@ -244,9 +260,14 @@ export class DatabaseService {
 
   static async updateExamAttempt(id: string, updates: any) {
     try {
-      const attemptRef = doc(db, 'exam_attempts', id);
-      await updateDoc(attemptRef, updates);
-      return { affectedRows: 1 };
+      const { data, error } = await supabase
+        .from('exam_attempts')
+        .update(updates)
+        .eq('id', id)
+        .select();
+
+      if (error) throw error;
+      return { affectedRows: data?.length || 0 };
     } catch (error) {
       console.error('Error updating exam attempt:', error);
       throw error;
@@ -255,14 +276,14 @@ export class DatabaseService {
 
   static async getExamAttemptsByStudent(studentId: string): Promise<ExamAttempt[]> {
     try {
-      const attemptsRef = collection(db, 'exam_attempts');
-      const q = query(attemptsRef, where('student_id', '==', studentId), orderBy('started_at', 'desc'));
-      const querySnapshot = await getDocs(q);
+      const { data, error } = await supabase
+        .from('exam_attempts')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('started_at', { ascending: false });
 
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ExamAttempt[];
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error('Error getting exam attempts by student:', error);
       return [];
@@ -271,14 +292,13 @@ export class DatabaseService {
 
   static async getAllExamAttempts(): Promise<ExamAttempt[]> {
     try {
-      const attemptsRef = collection(db, 'exam_attempts');
-      const q = query(attemptsRef, orderBy('started_at', 'desc'));
-      const querySnapshot = await getDocs(q);
+      const { data, error } = await supabase
+        .from('exam_attempts')
+        .select('*')
+        .order('started_at', { ascending: false });
 
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ExamAttempt[];
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error('Error getting all exam attempts:', error);
       return [];
@@ -287,40 +307,52 @@ export class DatabaseService {
 
   static async getExamAttemptById(id: string): Promise<ExamAttempt | null> {
     try {
-      const docRef = doc(db, 'exam_attempts', id);
-      const docSnap = await getDoc(docRef);
+      const { data, error } = await supabase
+        .from('exam_attempts')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
-      if (!docSnap.exists()) return null;
-
-      return { id: docSnap.id, ...docSnap.data() } as ExamAttempt;
+      if (error) throw error;
+      return data || null;
     } catch (error) {
       console.error('Error getting exam attempt by id:', error);
       return null;
     }
   }
 
+  // Media file operations
   static async saveMediaFile(fileName: string, fileType: string, fileData: string) {
     try {
       console.log('Saving media file:', fileName, fileType, 'Data length:', fileData.length);
-
+      
+      // Extract base64 data from data URL
       let base64Data = fileData;
       if (fileData.includes(',')) {
         base64Data = fileData.split(',')[1];
       }
-
+      
       console.log('Base64 data length:', base64Data.length);
+      
+      const { data, error } = await supabase
+        .from('media_files')
+        .insert([
+          {
+            file_name: fileName,
+            file_type: fileType,
+            file_data: base64Data
+          }
+        ])
+        .select()
+        .single();
 
-      const mediaRef = doc(collection(db, 'media_files'));
-      const mediaData = {
-        file_name: fileName,
-        file_type: fileType,
-        file_data: base64Data,
-        created_at: new Date().toISOString()
-      };
-
-      await setDoc(mediaRef, mediaData);
-      console.log('Media file saved successfully:', mediaRef.id);
-      return { insertId: mediaRef.id };
+      if (error) {
+        console.error('Supabase error saving media file:', error);
+        throw error;
+      }
+      
+      console.log('Media file saved successfully:', data.id);
+      return { insertId: data.id };
     } catch (error) {
       console.error('Error saving media file:', error);
       throw error;
@@ -330,46 +362,49 @@ export class DatabaseService {
   static async getMediaFile(id: string): Promise<MediaFile | null> {
     try {
       console.log('Getting media file:', id);
+      
+      const { data, error } = await supabase
+        .from('media_files')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
-      const docRef = doc(db, 'media_files', id);
-      const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
-        console.log('Media file not found:', id);
-        return null;
+      if (error) {
+        console.error('Supabase error getting media file:', error);
+        throw error;
       }
-
-      const data = docSnap.data();
-      const dataUrl = `data:${data.file_type};base64,${data.file_data}`;
-      console.log('Media file retrieved successfully, data URL length:', dataUrl.length);
-
-      return {
-        id: docSnap.id,
-        ...data,
-        file_data: dataUrl
-      } as MediaFile;
+      
+      if (data) {
+        // Convert base64 back to data URL for display
+        const dataUrl = `data:${data.file_type};base64,${data.file_data}`;
+        console.log('Media file retrieved successfully, data URL length:', dataUrl.length);
+        return {
+          ...data,
+          file_data: dataUrl
+        };
+      }
+      
+      console.log('Media file not found:', id);
+      return null;
     } catch (error) {
       console.error('Error getting media file:', error);
       return null;
     }
   }
 
+  // Admin/Stats operations
   static async getStats() {
     try {
-      const studentsRef = collection(db, 'students');
-      const examsRef = collection(db, 'exams');
-      const attemptsRef = collection(db, 'exam_attempts');
-
-      const [studentsSnapshot, examsSnapshot, attemptsSnapshot] = await Promise.all([
-        getCountFromServer(studentsRef),
-        getCountFromServer(examsRef),
-        getCountFromServer(attemptsRef)
+      const [studentsResult, examsResult, attemptsResult] = await Promise.all([
+        supabase.from('students').select('id', { count: 'exact', head: true }),
+        supabase.from('exams').select('id', { count: 'exact', head: true }),
+        supabase.from('exam_attempts').select('id', { count: 'exact', head: true })
       ]);
 
       return {
-        totalStudents: studentsSnapshot.data().count,
-        totalExams: examsSnapshot.data().count,
-        totalAttempts: attemptsSnapshot.data().count
+        totalStudents: studentsResult.count || 0,
+        totalExams: examsResult.count || 0,
+        totalAttempts: attemptsResult.count || 0
       };
     } catch (error) {
       console.error('Error getting stats:', error);

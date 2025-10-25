@@ -1,13 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 
 interface Student {
   id: string;
@@ -38,59 +30,91 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const userDoc = await getDoc(doc(db, 'students', user.uid));
-        const userData = userDoc.data();
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          setStudent({
+            id: session.user.id,
+            email: session.user.email!,
+            name: session.user.user_metadata?.name || session.user.email!.split('@')[0]
+          });
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      
+      if (session?.user) {
         setStudent({
-          id: user.uid,
-          email: user.email!,
-          name: userData?.name || user.displayName || user.email!.split('@')[0]
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.user_metadata?.name || session.user.email!.split('@')[0]
         });
       } else {
         setStudent(null);
+        // Clear admin session when user logs out
         localStorage.removeItem('adminSession');
       }
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      await updateProfile(user, { displayName: name });
-
-      await setDoc(doc(db, 'students', user.uid), {
+      const { data, error } = await supabase.auth.signUp({
         email,
-        name,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        password,
+        options: {
+          data: {
+            name: name
+          }
+        }
       });
 
+      if (error) {
+        return { error: error.message };
+      }
+
       return {};
-    } catch (error: any) {
+    } catch (error) {
       console.error('Signup error:', error);
-      return { error: error.message || 'An unexpected error occurred during signup' };
+      return { error: 'An unexpected error occurred during signup' };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
       return {};
-    } catch (error: any) {
+    } catch (error) {
       console.error('Signin error:', error);
-      return { error: error.message || 'An unexpected error occurred during signin' };
+      return { error: 'An unexpected error occurred during signin' };
     }
   };
 
   const signOut = async () => {
-    await firebaseSignOut(auth);
+    await supabase.auth.signOut();
     setStudent(null);
     localStorage.removeItem('adminSession');
   };

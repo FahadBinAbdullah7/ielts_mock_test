@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Users, FileText, Clock, Award, Plus, LogOut, Shield, Home } from 'lucide-react';
-import { collection, query, where, getCountFromServer } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabaseAdmin } from '../lib/supabase';
 
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState({
@@ -19,23 +18,32 @@ const AdminDashboard: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const studentsRef = collection(db, 'students');
-      const examsRef = collection(db, 'exams');
-      const attemptsRef = collection(db, 'exam_attempts');
-      const pendingQuery = query(attemptsRef, where('status', '==', 'completed'));
+      // Get total students
+      const { count: studentsCount } = await supabaseAdmin
+        .from('students')
+        .select('*', { count: 'exact', head: true });
 
-      const [studentsSnapshot, examsSnapshot, attemptsSnapshot, pendingSnapshot] = await Promise.all([
-        getCountFromServer(studentsRef),
-        getCountFromServer(examsRef),
-        getCountFromServer(attemptsRef),
-        getCountFromServer(pendingQuery)
-      ]);
+      // Get total exams
+      const { count: examsCount } = await supabaseAdmin
+        .from('exams')
+        .select('*', { count: 'exact', head: true });
+
+      // Get total attempts
+      const { count: attemptsCount } = await supabaseAdmin
+        .from('exam_attempts')
+        .select('*', { count: 'exact', head: true });
+
+      // Get pending grading
+      const { count: pendingCount } = await supabaseAdmin
+        .from('exam_attempts')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'completed');
 
       setStats({
-        totalStudents: studentsSnapshot.data().count,
-        totalExams: examsSnapshot.data().count,
-        totalAttempts: attemptsSnapshot.data().count,
-        pendingGrading: pendingSnapshot.data().count
+        totalStudents: studentsCount || 0,
+        totalExams: examsCount || 0,
+        totalAttempts: attemptsCount || 0,
+        pendingGrading: pendingCount || 0
       });
     } catch (error) {
       console.error('Error loading stats:', error);
